@@ -7,12 +7,16 @@ var
   Startbahnhof: Byte;
   Zielbahnhof: Byte;
   Zwischenstation: Byte;
+  Zwischenstationen: Byte;
   Kosten: Integer;
+  KostenZwischenstation: Integer;
+  KostenInsgesamt: Integer;
   Benachbart: Boolean;
   Schnellverbindung: Boolean;
   Temporaer: Byte;
-  Benachbartzwischnestation: Boolean;
-  Schnellverbindungzwischnestation: Boolean;
+  BenachbartZwischenstation: Boolean;
+  SchnellverbindungZwischenstation: Boolean;
+  TemporaerZwischenstation: Byte;
 
 const
   ZWISCHENSTATIONPREIS = 70;
@@ -22,11 +26,15 @@ begin
   Startbahnhof := 0;
   Zielbahnhof := 0;
   Zwischenstation := 0;
+  Zwischenstationen := 0;
   Kosten := 0;
+  KostenZwischenstation := 0;
+  KostenInsgesamt := 0;
+  
   Benachbart := False;
   Schnellverbindung := False;
-  Benachbartzwischnestation := False;
-  Schnellverbindungzwischnestation := False;
+  BenachbartZwischenstation := False;
+  SchnellverbindungZwischenstation := False;
 
   Writeln('Geben sie an von welchem Bahnhof sie starten');
   Readln(Startbahnhof);
@@ -40,15 +48,14 @@ begin
     Zielbahnhof := Temporaer;
   end;
 
-    if Zwischenstation > Zielbahnhof then
+  if Zwischenstation > Zielbahnhof then
   begin
-    Temporaerzwischentation := Startbahnhof;
+    TemporaerZwischenstation := Zwischenstation;
     Zwischenstation := Zielbahnhof;
-    Zielbahnhof := Temporaerzwischentation;
+    Zielbahnhof := TemporaerZwischenstation;
   end;
 
-
-    if ((Zwischenstation = 1) and ((Zielbahnhof = 2) or (Zielbahnhof = 3))) or
+  if ((Zwischenstation = 1) and ((Zielbahnhof = 2) or (Zielbahnhof = 3))) or
      ((Zwischenstation = 2) and (Zielbahnhof = 5)) or
      ((Zwischenstation = 3) and (Zielbahnhof = 4)) or
      ((Zwischenstation = 4) and (Zielbahnhof = 6)) or
@@ -67,14 +74,15 @@ begin
   then
   begin
     BenachbartZwischenstation := true;
-  end;
+    SchnellverbindungZwischenstation := False;
+  end
   else if ((Zwischenstation = 4) and (Zielbahnhof = 8)) or
           ((Zwischenstation = 3) and (Zielbahnhof = 5)) or
           ((Zwischenstation = 14) and (Zielbahnhof = 15)) or
           ((Zwischenstation = 10) and (Zielbahnhof = 15)) then
   begin
     SchnellverbindungZwischenstation := True;
-    BenachbartZwischenstation := True;
+    BenachbartZwischenstation := false;
   end
   else
   begin
@@ -82,8 +90,8 @@ begin
     SchnellverbindungZwischenstation := False;
   end;
 
-  if ((Startbahnhof = 1) and ((Zielbahnhof = 2) or (Zielbahnhof = 3))) or
-     ((Startbahnhof = 2) and (Zielbahnhof = 5)) or
+  if ((Startbahnhof = 1) and (Zielbahnhof = 2)) or
+     ((Startbahnhof = 2) and (Zielbahnhof = 5) or (Zielbahnhof = 3)) or
      ((Startbahnhof = 3) and (Zielbahnhof = 4)) or
      ((Startbahnhof = 4) and (Zielbahnhof = 6)) or
      ((Startbahnhof = 5) and ((Zielbahnhof = 7) or (Zielbahnhof = 10))) or
@@ -102,7 +110,6 @@ begin
   begin
     Benachbart := true;
     Schnellverbindung := False;
-    Kosten := Kosten + ZWISCHENSTATIONPREIS * 2;
   end
   else if ((Startbahnhof = 4) and (Zielbahnhof = 8)) or
           ((Startbahnhof = 3) and (Zielbahnhof = 5)) or
@@ -110,7 +117,7 @@ begin
           ((Startbahnhof = 10) and (Zielbahnhof = 15)) then
   begin
     Schnellverbindung := True;
-    Benachbart := True;
+    Benachbart := false;
     Kosten := Kosten + SCHNELLVERBINDUNGPREIS;
   end
   else
@@ -119,31 +126,26 @@ begin
     Schnellverbindung := False;
   end;
 
-
-    if Benachbart = false and Schnellverbindung = false then
-    begin
-          Writeln('Geben sie eine Zwischenstation aus von der sie weiter Reisen möchten');
-        Readln(Zwischenstationen);
-        end;
+  if ((Benachbart = false) and (Schnellverbindung = false)) then
+  begin
+    Writeln('Geben sie eine Zwischenstation aus von der sie weiter Reisen möchten');
+    Readln(Zwischenstationen);
+  end;
 
   if Temporaer > 0 then
- begin
-  Temporaer := Zielbahnhof;
-  Zielbahnhof := Startbahnhof;
-  Startbahnhof := Temporaer;
-   end;
+  begin
+    Temporaer := Zielbahnhof;
+    Zielbahnhof := Startbahnhof;
+    Startbahnhof := Temporaer;
+  end;
 
+  if TemporaerZwischenstation > 0 then
+  begin
+    TemporaerZwischenstation := Zielbahnhof;
+    Zielbahnhof := Zwischenstationen;
+    Zwischenstation := TemporaerZwischenstation;
+  end;
 
-    if Temporaerzwischentation > 0 then
- begin
-  Temporaerzwischentation := Zielbahnhof;
-  Zielbahnhof := Zwischenstationen;
-  Zwischenstation := Temporaerzwischentation;
-   end;
-
-
-
- 
   case Startbahnhof of
     1: Writeln('Der Startbahnhof ist Kiel');
     2: Writeln('Der Startbahnhof ist Rostock');
@@ -210,9 +212,25 @@ begin
     Writeln('Fehlerhafte Eingabe!');
   end;
 
+  if Schnellverbindung = true then
+begin
+  Kosten := Kosten + SCHNELLVERBINDUNGPREIS;
+end
+else if Benachbart = true then
+begin
+  Kosten := Kosten + ZWISCHENSTATIONPREIS;
+end
+else if BenachbartZwischenstation = true then
+begin
+  Kosten := KostenZwischenstation + ZWISCHENSTATIONPREIS;
+end
+else if SchnellverbindungZwischenstation = true then
+begin
+  Kosten := KostenZwischenstation + SCHNELLVERBINDUNGPREIS;
+end;
 
 
-
+ KostenInsgesamt := Kosten + KostenZwischenstation;
 
   if Zwischenstationen = Startbahnhof then
   begin
@@ -228,6 +246,7 @@ begin
   end
   else
   begin
-    Writeln('Die Kosten betragen: ', Kosten, ' Euro');
+
+    Writeln('Die Kosten betragen: ', KostenInsgesamt, ' Euro');
   end;
 end.
