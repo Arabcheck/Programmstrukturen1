@@ -7,8 +7,7 @@ var
   Startbahnhof, Zielbahnhof, Zwischenstation: Byte;
   Kosten1, Kosten2, KostenInsgesamt: Integer;
   DirektVerbindung: Boolean;
-  Temp: Byte;
-  Start1, Ziel1, Start2, Ziel2: Byte;
+  Original_Start, Original_Ziel: Byte;
 
 const
   ZWISCHENSTATIONPREIS = 70;
@@ -28,45 +27,48 @@ begin
   Writeln('Geben sie an zu welchen Bahnhof sie reisen möchten (1-17):');
   Readln(Zielbahnhof);
 
+  // Speichern der originalen Werte
+  Original_Start := Startbahnhof;
+  Original_Ziel := Zielbahnhof;
+
   if Startbahnhof = Zielbahnhof then
   begin
     Writeln('FEHLER: Start- und Zielbahnhof sind identisch!');
     Exit;
   end;
 
-  // Sortieren für die direkte Verbindungsprüfung
-  if Startbahnhof > Zielbahnhof then
-  begin
-    Temp := Startbahnhof;
-    Startbahnhof := Zielbahnhof;
-    Zielbahnhof := Temp;
-  end;
-
   // Direkte Verbindungsprüfung (gelbe Strecken)
-  if (Startbahnhof = 1) and (Zielbahnhof = 3) or
-     (Startbahnhof = 2) and ((Zielbahnhof = 3) or (Zielbahnhof = 5)) or
-     (Startbahnhof = 3) and (Zielbahnhof = 4) or
-     (Startbahnhof = 4) and (Zielbahnhof = 6) or
-     (Startbahnhof = 5) and ((Zielbahnhof = 7) or (Zielbahnhof = 10)) or
-     (Startbahnhof = 6) and ((Zielbahnhof = 7) or (Zielbahnhof = 9)) or
-     (Startbahnhof = 7) and (Zielbahnhof = 10) or
-     (Startbahnhof = 8) and ((Zielbahnhof = 9) or (Zielbahnhof = 12)) or
-     (Startbahnhof = 9) and ((Zielbahnhof = 10) or (Zielbahnhof = 14)) or
-     (Startbahnhof = 10) and (Zielbahnhof = 11) or
-     (Startbahnhof = 12) and ((Zielbahnhof = 13) or (Zielbahnhof = 14)) or
-     (Startbahnhof = 13) and (Zielbahnhof = 14) or
-     (Startbahnhof = 14) and (Zielbahnhof = 16) or
-     (Startbahnhof = 15) and ((Zielbahnhof = 16) or (Zielbahnhof = 17)) or
-     (Startbahnhof = 16) and (Zielbahnhof = 17) then
+  if (Startbahnhof = 1) and (Zielbahnhof = 3) or (Startbahnhof = 3) and (Zielbahnhof = 1) or
+     (Startbahnhof = 2) and (Zielbahnhof = 3) or (Startbahnhof = 3) and (Zielbahnhof = 2) or
+     (Startbahnhof = 2) and (Zielbahnhof = 5) or (Startbahnhof = 5) and (Zielbahnhof = 2) or
+     (Startbahnhof = 3) and (Zielbahnhof = 4) or (Startbahnhof = 4) and (Zielbahnhof = 3) or
+     (Startbahnhof = 4) and (Zielbahnhof = 6) or (Startbahnhof = 6) and (Zielbahnhof = 4) or
+     (Startbahnhof = 5) and (Zielbahnhof = 7) or (Startbahnhof = 7) and (Zielbahnhof = 5) or
+     (Startbahnhof = 5) and (Zielbahnhof = 10) or (Startbahnhof = 10) and (Zielbahnhof = 5) or
+     (Startbahnhof = 6) and (Zielbahnhof = 7) or (Startbahnhof = 7) and (Zielbahnhof = 6) or
+     (Startbahnhof = 6) and (Zielbahnhof = 9) or (Startbahnhof = 9) and (Zielbahnhof = 6) or
+     (Startbahnhof = 7) and (Zielbahnhof = 10) or (Startbahnhof = 10) and (Zielbahnhof = 7) or
+     (Startbahnhof = 8) and (Zielbahnhof = 9) or (Startbahnhof = 9) and (Zielbahnhof = 8) or
+     (Startbahnhof = 8) and (Zielbahnhof = 12) or (Startbahnhof = 12) and (Zielbahnhof = 8) or
+     (Startbahnhof = 9) and (Zielbahnhof = 10) or (Startbahnhof = 10) and (Zielbahnhof = 9) or
+     (Startbahnhof = 9) and (Zielbahnhof = 14) or (Startbahnhof = 14) and (Zielbahnhof = 9) or
+     (Startbahnhof = 10) and (Zielbahnhof = 11) or (Startbahnhof = 11) and (Zielbahnhof = 10) or
+     (Startbahnhof = 12) and (Zielbahnhof = 13) or (Startbahnhof = 13) and (Zielbahnhof = 12) or
+     (Startbahnhof = 13) and (Zielbahnhof = 14) or (Startbahnhof = 14) and (Zielbahnhof = 13) or
+     (Startbahnhof = 14) and (Zielbahnhof = 15) or (Startbahnhof = 15) and (Zielbahnhof = 14) or
+     (Startbahnhof = 14) and (Zielbahnhof = 16) or (Startbahnhof = 16) and (Zielbahnhof = 14) or
+     (Startbahnhof = 15) and (Zielbahnhof = 16) or (Startbahnhof = 16) and (Zielbahnhof = 15) or
+     (Startbahnhof = 15) and (Zielbahnhof = 17) or (Startbahnhof = 17) and (Zielbahnhof = 15) or
+     (Startbahnhof = 16) and (Zielbahnhof = 17) or (Startbahnhof = 17) and (Zielbahnhof = 16) then
   begin
     DirektVerbindung := True;
     Kosten1 := ZWISCHENSTATIONPREIS;
   end
   // Direkte Verbindungsprüfung (grüne Strecken)
-  else if (Startbahnhof = 3) and (Zielbahnhof = 5) or
-          (Startbahnhof = 4) and (Zielbahnhof = 8) or
-          (Startbahnhof = 10) and (Zielbahnhof = 15) or
-          (Startbahnhof = 14) and (Zielbahnhof = 15) then
+  else if (Startbahnhof = 3) and (Zielbahnhof = 5) or (Startbahnhof = 5) and (Zielbahnhof = 3) or
+          (Startbahnhof = 4) and (Zielbahnhof = 8) or (Startbahnhof = 8) and (Zielbahnhof = 4) or
+          (Startbahnhof = 10) and (Zielbahnhof = 15) or (Startbahnhof = 15) and (Zielbahnhof = 10) or
+          (Startbahnhof = 14) and (Zielbahnhof = 15) or (Startbahnhof = 15) and (Zielbahnhof = 14) then
   begin
     DirektVerbindung := True;
     Kosten1 := SCHNELLVERBINDUNGPREIS;
@@ -80,100 +82,98 @@ begin
     Writeln('Keine direkte Verbindung möglich. Geben sie eine Zwischenstation ein (1-17):');
     Readln(Zwischenstation);
 
-    if (Zwischenstation = Startbahnhof) or (Zwischenstation = Zielbahnhof) then
+    if (Zwischenstation = Original_Start) or (Zwischenstation = Original_Ziel) then
     begin
       Writeln('FEHLER: Zwischenstation darf nicht gleich Start- oder Zielbahnhof sein!');
       Exit;
     end;
 
-    // Prüfe erste Teilstrecke: Startbahnhof -> Zwischenstation
-    Start1 := Startbahnhof;
-    Ziel1 := Zwischenstation;
-    
-    // Sortieren für weniger Vergleiche
-    if Start1 > Ziel1 then
-    begin
-      Temp := Start1;
-      Start1 := Ziel1;
-      Ziel1 := Temp;
-    end;
-    
-    // Prüfe zweite Teilstrecke: Zwischenstation -> Zielbahnhof
-    Start2 := Zwischenstation;
-    Ziel2 := Zielbahnhof;
-    
-    // Sortieren für weniger Vergleiche
-    if Start2 > Ziel2 then
-    begin
-      Temp := Start2;
-      Start2 := Ziel2;
-      Ziel2 := Temp;
-    end;
-    
-    // Verbindungsprüfung für erste Teilstrecke (gelbe Strecken)
-    if (Start1 = 1) and (Ziel1 = 3) or
-       (Start1 = 2) and ((Ziel1 = 3) or (Ziel1 = 5)) or
-       (Start1 = 3) and (Ziel1 = 4) or
-       (Start1 = 4) and (Ziel1 = 6) or
-       (Start1 = 5) and ((Ziel1 = 7) or (Ziel1 = 10)) or
-       (Start1 = 6) and ((Ziel1 = 7) or (Ziel1 = 9)) or
-       (Start1 = 7) and (Ziel1 = 10) or
-       (Start1 = 8) and ((Ziel1 = 9) or (Ziel1 = 12)) or
-       (Start1 = 9) and ((Ziel1 = 10) or (Ziel1 = 14)) or
-       (Start1 = 10) and (Ziel1 = 11) or
-       (Start1 = 12) and ((Ziel1 = 13) or (Ziel1 = 14)) or
-       (Start1 = 13) and (Ziel1 = 14) or
-       (Start1 = 14) and (Ziel1 = 16) or
-       (Start1 = 15) and ((Ziel1 = 16) or (Ziel1 = 17)) or
-       (Start1 = 16) and (Ziel1 = 17) then
+    // Prüfe erste Teilstrecke: Original_Start -> Zwischenstation
+    Kosten1 := 0;
+    // Gelbe Strecken
+    if (Original_Start = 1) and (Zwischenstation = 3) or (Original_Start = 3) and (Zwischenstation = 1) or
+       (Original_Start = 2) and (Zwischenstation = 3) or (Original_Start = 3) and (Zwischenstation = 2) or
+       (Original_Start = 2) and (Zwischenstation = 5) or (Original_Start = 5) and (Zwischenstation = 2) or
+       (Original_Start = 3) and (Zwischenstation = 4) or (Original_Start = 4) and (Zwischenstation = 3) or
+       (Original_Start = 3) and (Zwischenstation = 6) or (Original_Start = 6) and (Zwischenstation = 3) or
+       (Original_Start = 4) and (Zwischenstation = 6) or (Original_Start = 6) and (Zwischenstation = 4) or
+       (Original_Start = 6) and (Zwischenstation = 7) or (Original_Start = 7) and (Zwischenstation = 6) or
+       (Original_Start = 6) and (Zwischenstation = 9) or (Original_Start = 9) and (Zwischenstation = 6) or
+       (Original_Start = 7) and (Zwischenstation = 10) or (Original_Start = 10) and (Zwischenstation = 7) or
+       (Original_Start = 8) and (Zwischenstation = 9) or (Original_Start = 9) and (Zwischenstation = 8) or
+       (Original_Start = 8) and (Zwischenstation = 12) or (Original_Start = 12) and (Zwischenstation = 8) or
+       (Original_Start = 8) and (Zwischenstation = 14) or (Original_Start = 14) and (Zwischenstation = 8) or
+       (Original_Start = 9) and (Zwischenstation = 14) or (Original_Start = 14) and (Zwischenstation = 9) or
+       (Original_Start = 9) and (Zwischenstation = 15) or (Original_Start = 15) and (Zwischenstation = 9) or
+       (Original_Start = 10) and (Zwischenstation = 11) or (Original_Start = 11) and (Zwischenstation = 10) or
+       (Original_Start = 11) and (Zwischenstation = 6) or (Original_Start = 6) and (Zwischenstation = 11) or
+       (Original_Start = 12) and (Zwischenstation = 13) or (Original_Start = 13) and (Zwischenstation = 12) or
+       (Original_Start = 13) and (Zwischenstation = 14) or (Original_Start = 14) and (Zwischenstation = 13) or
+       (Original_Start = 14) and (Zwischenstation = 16) or (Original_Start = 16) and (Zwischenstation = 14) or
+       (Original_Start = 15) and (Zwischenstation = 16) or (Original_Start = 16) and (Zwischenstation = 15) or
+       (Original_Start = 15) and (Zwischenstation = 17) or (Original_Start = 17) and (Zwischenstation = 15) or
+       (Original_Start = 16) and (Zwischenstation = 17) or (Original_Start = 17) and (Zwischenstation = 16) then
     begin
       Kosten1 := ZWISCHENSTATIONPREIS;
     end
-    // Verbindungsprüfung für erste Teilstrecke (grüne Strecken)
-    else if (Start1 = 3) and (Ziel1 = 5) or
-            (Start1 = 4) and (Ziel1 = 8) or
-            (Start1 = 10) and (Ziel1 = 15) or
-            (Start1 = 14) and (Ziel1 = 15) then
+    // Grüne Strecken
+    else if (Original_Start = 3) and (Zwischenstation = 5) or (Original_Start = 5) and (Zwischenstation = 3) or
+            (Original_Start = 4) and (Zwischenstation = 8) or (Original_Start = 8) and (Zwischenstation = 4) or
+            (Original_Start = 10) and (Zwischenstation = 15) or (Original_Start = 15) and (Zwischenstation = 10) or
+            (Original_Start = 14) and (Zwischenstation = 15) or (Original_Start = 15) and (Zwischenstation = 14) then
     begin
       Kosten1 := SCHNELLVERBINDUNGPREIS;
     end;
     
-    // Verbindungsprüfung für zweite Teilstrecke (gelbe Strecken)
-    if (Start2 = 1) and (Ziel2 = 3) or
-       (Start2 = 2) and ((Ziel2 = 3) or (Ziel2 = 5)) or
-       (Start2 = 3) and (Ziel2 = 4) or
-       (Start2 = 4) and (Ziel2 = 6) or
-       (Start2 = 5) and ((Ziel2 = 7) or (Ziel2 = 10)) or
-       (Start2 = 6) and ((Ziel2 = 7) or (Ziel2 = 9)) or
-       (Start2 = 7) and (Ziel2 = 10) or
-       (Start2 = 8) and ((Ziel2 = 9) or (Ziel2 = 12)) or
-       (Start2 = 9) and ((Ziel2 = 10) or (Ziel2 = 14)) or
-       (Start2 = 10) and (Ziel2 = 11) or
-       (Start2 = 12) and ((Ziel2 = 13) or (Ziel2 = 14)) or
-       (Start2 = 13) and (Ziel2 = 14) or
-       (Start2 = 14) and (Ziel2 = 16) or
-       (Start2 = 15) and ((Ziel2 = 16) or (Ziel2 = 17)) or
-       (Start2 = 16) and (Ziel2 = 17) then
+    // Prüfe zweite Teilstrecke: Zwischenstation -> Original_Ziel
+    Kosten2 := 0;
+    // Gelbe Strecken
+    if (Zwischenstation = 1) and (Original_Ziel = 3) or (Zwischenstation = 3) and (Original_Ziel = 1) or
+       (Zwischenstation = 2) and (Original_Ziel = 3) or (Zwischenstation = 3) and (Original_Ziel = 2) or
+       (Zwischenstation = 2) and (Original_Ziel = 5) or (Zwischenstation = 5) and (Original_Ziel = 2) or
+       (Zwischenstation = 3) and (Original_Ziel = 4) or (Zwischenstation = 4) and (Original_Ziel = 3) or
+       (Zwischenstation = 3) and (Original_Ziel = 6) or (Zwischenstation = 6) and (Original_Ziel = 3) or
+       (Zwischenstation = 4) and (Original_Ziel = 6) or (Zwischenstation = 6) and (Original_Ziel = 4) or
+       (Zwischenstation = 6) and (Original_Ziel = 7) or (Zwischenstation = 7) and (Original_Ziel = 6) or
+       (Zwischenstation = 6) and (Original_Ziel = 9) or (Zwischenstation = 9) and (Original_Ziel = 6) or
+       (Zwischenstation = 7) and (Original_Ziel = 10) or (Zwischenstation = 10) and (Original_Ziel = 7) or
+       (Zwischenstation = 8) and (Original_Ziel = 9) or (Zwischenstation = 9) and (Original_Ziel = 8) or
+       (Zwischenstation = 8) and (Original_Ziel = 12) or (Zwischenstation = 12) and (Original_Ziel = 8) or
+       (Zwischenstation = 8) and (Original_Ziel = 14) or (Zwischenstation = 14) and (Original_Ziel = 8) or
+       (Zwischenstation = 9) and (Original_Ziel = 14) or (Zwischenstation = 14) and (Original_Ziel = 9) or
+       (Zwischenstation = 9) and (Original_Ziel = 15) or (Zwischenstation = 15) and (Original_Ziel = 9) or
+       (Zwischenstation = 10) and (Original_Ziel = 11) or (Zwischenstation = 11) and (Original_Ziel = 10) or
+       (Zwischenstation = 11) and (Original_Ziel = 6) or (Zwischenstation = 6) and (Original_Ziel = 11) or
+       (Zwischenstation = 12) and (Original_Ziel = 13) or (Zwischenstation = 13) and (Original_Ziel = 12) or
+       (Zwischenstation = 13) and (Original_Ziel = 14) or (Zwischenstation = 14) and (Original_Ziel = 13) or
+       (Zwischenstation = 14) and (Original_Ziel = 16) or (Zwischenstation = 16) and (Original_Ziel = 14) or
+       (Zwischenstation = 15) and (Original_Ziel = 16) or (Zwischenstation = 16) and (Original_Ziel = 15) or
+       (Zwischenstation = 15) and (Original_Ziel = 17) or (Zwischenstation = 17) and (Original_Ziel = 15) or
+       (Zwischenstation = 16) and (Original_Ziel = 17) or (Zwischenstation = 17) and (Original_Ziel = 16) then
     begin
       Kosten2 := ZWISCHENSTATIONPREIS;
     end
-    // Verbindungsprüfung für zweite Teilstrecke (grüne Strecken)
-    else if (Start2 = 3) and (Ziel2 = 5) or
-            (Start2 = 4) and (Ziel2 = 8) or
-            (Start2 = 10) and (Ziel2 = 15) or
-            (Start2 = 14) and (Ziel2 = 15) then
+    // Grüne Strecken
+    else if (Zwischenstation = 3) and (Original_Ziel = 5) or (Zwischenstation = 5) and (Original_Ziel = 3) or
+            (Zwischenstation = 4) and (Original_Ziel = 8) or (Zwischenstation = 8) and (Original_Ziel = 4) or
+            (Zwischenstation = 10) and (Original_Ziel = 15) or (Zwischenstation = 15) and (Original_Ziel = 10) or
+            (Zwischenstation = 14) and (Original_Ziel = 15) or (Zwischenstation = 15) and (Original_Ziel = 14) then
     begin
       Kosten2 := SCHNELLVERBINDUNGPREIS;
     end;
     
-    KostenInsgesamt := Kosten1 + Kosten2;
+    // Überprüfen, ob beide Teilstrecken vorhanden sind
+    if (Kosten1 = 0) or (Kosten2 = 0) then
+      KostenInsgesamt := 0
+    else
+      KostenInsgesamt := Kosten1 + Kosten2;
   end;
 
   // Ausgabe der Reiseinformationen
   Writeln('Ihre Reiseroute:');
   
   Write('Startbahnhof: ');
-  case Startbahnhof of
+  case Original_Start of
     1: Writeln('Kiel');
     2: Writeln('Rostock');
     3: Writeln('Hamburg');
@@ -222,7 +222,7 @@ begin
   end;
   
   Write('Zielbahnhof: ');
-  case Zielbahnhof of
+  case Original_Ziel of
     1: Writeln('Kiel');
     2: Writeln('Rostock');
     3: Writeln('Hamburg');
