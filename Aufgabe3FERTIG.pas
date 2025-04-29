@@ -34,7 +34,6 @@ begin
   if Startbahnhof = Zielbahnhof then
   begin
     Writeln('FEHLER: Start- und Zielbahnhof sind identisch!');
-    Exit;
   end;
 
   // Direkte Verbindungsprüfung (gelbe Strecken)
@@ -87,7 +86,6 @@ begin
     if (Zwischenstation = Original_Start) or (Zwischenstation = Original_Ziel) then
     begin
       Writeln('FEHLER: Zwischenstation darf nicht gleich Start- oder Zielbahnhof sein!');
-      Exit;
     end;
 
     // Prüfe erste Teilstrecke: Original_Start -> Zwischenstation
