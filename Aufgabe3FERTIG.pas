@@ -42,29 +42,31 @@ begin
      (Startbahnhof = 2) and (Zielbahnhof = 3) or (Startbahnhof = 3) and (Zielbahnhof = 2) or
      (Startbahnhof = 2) and (Zielbahnhof = 5) or (Startbahnhof = 5) and (Zielbahnhof = 2) or
      (Startbahnhof = 3) and (Zielbahnhof = 4) or (Startbahnhof = 4) and (Zielbahnhof = 3) or
+     (Startbahnhof = 3) and (Zielbahnhof = 6) or (Startbahnhof = 6) and (Zielbahnhof = 3) or
      (Startbahnhof = 4) and (Zielbahnhof = 6) or (Startbahnhof = 6) and (Zielbahnhof = 4) or
-     (Startbahnhof = 5) and (Zielbahnhof = 7) or (Startbahnhof = 7) and (Zielbahnhof = 5) or
-     (Startbahnhof = 5) and (Zielbahnhof = 10) or (Startbahnhof = 10) and (Zielbahnhof = 5) or
+     (Startbahnhof = 5) and (Zielbahnhof = 11) or (Startbahnhof = 11) and (Zielbahnhof = 5) or
      (Startbahnhof = 6) and (Zielbahnhof = 7) or (Startbahnhof = 7) and (Zielbahnhof = 6) or
      (Startbahnhof = 6) and (Zielbahnhof = 9) or (Startbahnhof = 9) and (Zielbahnhof = 6) or
      (Startbahnhof = 7) and (Zielbahnhof = 10) or (Startbahnhof = 10) and (Zielbahnhof = 7) or
      (Startbahnhof = 8) and (Zielbahnhof = 9) or (Startbahnhof = 9) and (Zielbahnhof = 8) or
      (Startbahnhof = 8) and (Zielbahnhof = 12) or (Startbahnhof = 12) and (Zielbahnhof = 8) or
-     (Startbahnhof = 9) and (Zielbahnhof = 10) or (Startbahnhof = 10) and (Zielbahnhof = 9) or
+     (Startbahnhof = 8) and (Zielbahnhof = 14) or (Startbahnhof = 14) and (Zielbahnhof = 8) or
      (Startbahnhof = 9) and (Zielbahnhof = 14) or (Startbahnhof = 14) and (Zielbahnhof = 9) or
+     (Startbahnhof = 9) and (Zielbahnhof = 15) or (Startbahnhof = 15) and (Zielbahnhof = 9) or
      (Startbahnhof = 10) and (Zielbahnhof = 11) or (Startbahnhof = 11) and (Zielbahnhof = 10) or
+     (Startbahnhof = 11) and (Zielbahnhof = 6) or (Startbahnhof = 6) and (Zielbahnhof = 11) or
      (Startbahnhof = 12) and (Zielbahnhof = 13) or (Startbahnhof = 13) and (Zielbahnhof = 12) or
      (Startbahnhof = 13) and (Zielbahnhof = 14) or (Startbahnhof = 14) and (Zielbahnhof = 13) or
-     (Startbahnhof = 14) and (Zielbahnhof = 15) or (Startbahnhof = 15) and (Zielbahnhof = 14) or
      (Startbahnhof = 14) and (Zielbahnhof = 16) or (Startbahnhof = 16) and (Zielbahnhof = 14) or
      (Startbahnhof = 15) and (Zielbahnhof = 16) or (Startbahnhof = 16) and (Zielbahnhof = 15) or
      (Startbahnhof = 15) and (Zielbahnhof = 17) or (Startbahnhof = 17) and (Zielbahnhof = 15) or
+     (Startbahnhof = 15) and (Zielbahnhof = 9) or (Startbahnhof = 9) and (Zielbahnhof = 15) or
      (Startbahnhof = 16) and (Zielbahnhof = 17) or (Startbahnhof = 17) and (Zielbahnhof = 16) then
   begin
     DirektVerbindung := True;
     Kosten1 := ZWISCHENSTATIONPREIS;
   end
-  // Direkte Verbindungsprüfung (grüne Strecken)
+  // Direkte Verbindungsprüfung (grüne Strecken - Schnellverbindungen)
   else if (Startbahnhof = 3) and (Zielbahnhof = 5) or (Startbahnhof = 5) and (Zielbahnhof = 3) or
           (Startbahnhof = 4) and (Zielbahnhof = 8) or (Startbahnhof = 8) and (Zielbahnhof = 4) or
           (Startbahnhof = 10) and (Zielbahnhof = 15) or (Startbahnhof = 15) and (Zielbahnhof = 10) or
@@ -97,6 +99,7 @@ begin
        (Original_Start = 3) and (Zwischenstation = 4) or (Original_Start = 4) and (Zwischenstation = 3) or
        (Original_Start = 3) and (Zwischenstation = 6) or (Original_Start = 6) and (Zwischenstation = 3) or
        (Original_Start = 4) and (Zwischenstation = 6) or (Original_Start = 6) and (Zwischenstation = 4) or
+       (Original_Start = 5) and (Zwischenstation = 11) or (Original_Start = 11) and (Zwischenstation = 5) or
        (Original_Start = 6) and (Zwischenstation = 7) or (Original_Start = 7) and (Zwischenstation = 6) or
        (Original_Start = 6) and (Zwischenstation = 9) or (Original_Start = 9) and (Zwischenstation = 6) or
        (Original_Start = 7) and (Zwischenstation = 10) or (Original_Start = 10) and (Zwischenstation = 7) or
@@ -112,11 +115,12 @@ begin
        (Original_Start = 14) and (Zwischenstation = 16) or (Original_Start = 16) and (Zwischenstation = 14) or
        (Original_Start = 15) and (Zwischenstation = 16) or (Original_Start = 16) and (Zwischenstation = 15) or
        (Original_Start = 15) and (Zwischenstation = 17) or (Original_Start = 17) and (Zwischenstation = 15) or
+       (Original_Start = 15) and (Zwischenstation = 9) or (Original_Start = 9) and (Zwischenstation = 15) or
        (Original_Start = 16) and (Zwischenstation = 17) or (Original_Start = 17) and (Zwischenstation = 16) then
     begin
       Kosten1 := ZWISCHENSTATIONPREIS;
     end
-    // Grüne Strecken
+    // Grüne Strecken (Schnellverbindungen)
     else if (Original_Start = 3) and (Zwischenstation = 5) or (Original_Start = 5) and (Zwischenstation = 3) or
             (Original_Start = 4) and (Zwischenstation = 8) or (Original_Start = 8) and (Zwischenstation = 4) or
             (Original_Start = 10) and (Zwischenstation = 15) or (Original_Start = 15) and (Zwischenstation = 10) or
@@ -134,6 +138,7 @@ begin
        (Zwischenstation = 3) and (Original_Ziel = 4) or (Zwischenstation = 4) and (Original_Ziel = 3) or
        (Zwischenstation = 3) and (Original_Ziel = 6) or (Zwischenstation = 6) and (Original_Ziel = 3) or
        (Zwischenstation = 4) and (Original_Ziel = 6) or (Zwischenstation = 6) and (Original_Ziel = 4) or
+       (Zwischenstation = 5) and (Original_Ziel = 11) or (Zwischenstation = 11) and (Original_Ziel = 5) or
        (Zwischenstation = 6) and (Original_Ziel = 7) or (Zwischenstation = 7) and (Original_Ziel = 6) or
        (Zwischenstation = 6) and (Original_Ziel = 9) or (Zwischenstation = 9) and (Original_Ziel = 6) or
        (Zwischenstation = 7) and (Original_Ziel = 10) or (Zwischenstation = 10) and (Original_Ziel = 7) or
@@ -149,11 +154,12 @@ begin
        (Zwischenstation = 14) and (Original_Ziel = 16) or (Zwischenstation = 16) and (Original_Ziel = 14) or
        (Zwischenstation = 15) and (Original_Ziel = 16) or (Zwischenstation = 16) and (Original_Ziel = 15) or
        (Zwischenstation = 15) and (Original_Ziel = 17) or (Zwischenstation = 17) and (Original_Ziel = 15) or
+       (Zwischenstation = 15) and (Original_Ziel = 9) or (Zwischenstation = 9) and (Original_Ziel = 15) or
        (Zwischenstation = 16) and (Original_Ziel = 17) or (Zwischenstation = 17) and (Original_Ziel = 16) then
     begin
       Kosten2 := ZWISCHENSTATIONPREIS;
     end
-    // Grüne Strecken
+    // Grüne Strecken (Schnellverbindungen)
     else if (Zwischenstation = 3) and (Original_Ziel = 5) or (Zwischenstation = 5) and (Original_Ziel = 3) or
             (Zwischenstation = 4) and (Original_Ziel = 8) or (Zwischenstation = 8) and (Original_Ziel = 4) or
             (Zwischenstation = 10) and (Original_Ziel = 15) or (Zwischenstation = 15) and (Original_Ziel = 10) or
