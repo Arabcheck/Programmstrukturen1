@@ -1,0 +1,109 @@
+program schleife;
+{$R+,Q+,X-}
+
+uses
+  SysUtils, Math, crt;
+
+const
+  LOWER_BORDER = 0;
+  UPPER_BORDER = 200;
+
+var
+  x: Integer;
+  teiler, summe: Integer;
+
+  // Für die Ziffernhäufigkeits-Prüfung
+  Eingabezahl, Zahl, ZifferZuPruefen, AktuelleZiffer: Integer;
+  ersteHaeufigkeit, aktuelleHaeufigkeit: Integer;
+  sindAlleGleich, ersteZifferGefunden: Boolean;
+
+  // Hilfs-Variablen für die formatierte Ausgabe
+  width, temp: Integer;
+  isEven, isPerfect: Boolean;
+
+begin
+  // 1) Breite berechnen, damit wir x rechtsbündig ausgeben können
+  width := 1;
+  temp := UPPER_BORDER;
+  while temp div 10 > 0 do
+  begin
+    Inc(width);
+    temp := temp div 10;
+  end;
+
+  // 2) Hauptschleife über alle x
+  for x := LOWER_BORDER to UPPER_BORDER do
+  begin
+    // --- Gerade?
+    isEven := (x mod 2 = 0);
+
+    // --- Vollkommene Zahl?
+    summe := 0;
+    teiler := 1;
+    // hier könnte man auch eine for-Schleife nehmen, aber so zeigen wir nochmal while
+    while teiler <= (x div 2) do
+    begin
+      if (x mod teiler) = 0 then
+        summe := summe + teiler;
+      Inc(teiler);
+    end;
+    isPerfect := (summe = x);
+
+    // --- Ziffern-Häufigkeit prüfen
+    sindAlleGleich := True;
+    ersteHaeufigkeit := 0;
+    ersteZifferGefunden := False;
+    Eingabezahl := x;
+    // Für jede Ziffer 0–9
+    for ZifferZuPruefen := 0 to 9 do
+    begin
+      aktuelleHaeufigkeit := 0;
+      Zahl := Eingabezahl;
+      // repeat…until sorgt dafür, dass auch x=0 korrekt gezählt wird
+      repeat
+        AktuelleZiffer := Zahl mod 10;
+        if AktuelleZiffer = ZifferZuPruefen then
+          Inc(aktuelleHaeufigkeit);
+        Zahl := Zahl div 10;
+      until Zahl = 0;
+
+      if aktuelleHaeufigkeit > 0 then
+      begin
+        if not ersteZifferGefunden then
+        begin
+          ersteHaeufigkeit := aktuelleHaeufigkeit;
+          ersteZifferGefunden := True;
+        end
+        else if aktuelleHaeufigkeit <> ersteHaeufigkeit then
+          sindAlleGleich := False;
+      end;
+    end;
+
+    // --- Ausgabe in einer Zeile
+    write('Zahl: ');
+    TextColor(Red);
+    write(x:width);              // rechtsbündig mit ermittelter Breite
+    TextColor(White);
+
+    write('  Gerade: ');
+    if isEven then
+      write('TRUE')
+    else
+      write('FALSE');
+
+    write('  Vollkommen: ');
+    if isPerfect then
+      write('TRUE')
+    else
+      write('FALSE');
+
+    write('  Ziffern gleich oft: ');
+    if sindAlleGleich then
+      write('TRUE')
+    else
+      write('FALSE');
+
+    writeln;
+  end;
+
+end.
