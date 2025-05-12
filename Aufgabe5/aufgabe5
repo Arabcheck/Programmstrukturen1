@@ -16,7 +16,9 @@ Leerzeichen: integer;
 Woerter: integer;
 Wortlaenge: integer;
 TempWortlaenge: integer;
-
+StartPos, EndPos, AktuellesWort, ZielWort: integer;
+Wortnummer: integer;
+ErstesZeichen: char;
 
 
 begin
@@ -89,14 +91,35 @@ readln(Menue);
     end;
 
 
-    if (Menue = 'd') and Satzdeklariert then
+if (Menue = 'd') and Satzdeklariert then
+begin
+  StartPos := 1;
+  WortNummer := 1;
+
+  for EndPos := 1 to Length(Satz) + 1 do
+  begin
+    if (EndPos > Length(Satz)) or (Satz[EndPos] = ' ') then
     begin
-        if Satz[Wortname] <> ' ' then
+      // Erstes Zeichen des Wortes holen
+      if EndPos > StartPos then // Leere Wörter vermeiden
+      begin
+        // Hole das erste Zeichen des aktuellen Wortes
+        
+        ErstesZeichen := Satz[StartPos];
+
+        // Prüfe, ob es ein Konsonant ist
+        if not (LowerCase(ErstesZeichen) in ['a', 'e', 'i', 'o', 'u']) and
+           (ErstesZeichen in ['A'..'Z', 'a'..'z']) then
         begin
-
+          writeln('Wort ', WortNummer, ': ', Copy(Satz, StartPos, EndPos - StartPos));
         end;
-
+        WortNummer := WortNummer + 1;
+      end;
+      StartPos := EndPos + 1;
     end;
+  end;
+end;
+
 
     if (Menue = 'e') and Satzdeklariert then
     begin
