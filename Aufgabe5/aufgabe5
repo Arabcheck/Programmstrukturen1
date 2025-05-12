@@ -48,7 +48,7 @@ readln(Menue);
     end;
 
 
-    if (Menue = 'b') and (Satzdeklariert = true) then
+    if (Menue = 'b') and Satzdeklariert then
     begin
     for Leerzeichenstelle := 1 to length(Satz) do
     begin
@@ -65,6 +65,7 @@ readln(Menue);
     end;
     if (Menue = 'c') and (Satzdeklariert = true) then
     begin
+        Woerter := 0;
         TempWortlaenge := 0;
         for Wortlaenge := 1 to length(Satz) do
         begin
@@ -74,10 +75,10 @@ readln(Menue);
             begin
             Woerter := Woerter + 1;
             writeln('Die Laenge des ', Woerter , ' Wortes betraegt: ', TempWortlaenge);
-            TempWortlaenge := 0; // Reset for the next word
+            TempWortlaenge := 0; 
             end;
         end;
-        // Output the length of the last word if Satz doesn't end with a space
+        
         if TempWortlaenge > 0 then
         begin
             writeln('Die Laenge des letzten Wortes betraegt: ', TempWortlaenge);
@@ -101,10 +102,10 @@ readln(Menue);
 
     if (Menue = 'x') then
     begin
-
+    writeln('Das Programm wird sich Selbst Zerstören!');
     end;
 
-until not (Menue = 'a') or (Menue = 'b') or (Menue = 'c') or (Menue = 'd') or (Menue = 'e');
+until not (Menue = 'a') xor (Menue = 'b') xor (Menue = 'c') xor (Menue = 'd') xor (Menue = 'e') or (Menue = 'x');
 
 
 end.
