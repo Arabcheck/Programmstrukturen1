@@ -6,15 +6,16 @@ SysUtils,Math;
 
 var
 
-Zahl: char;
-Menue: String;
+Zahl: integer;
 Satz: String;
+Menue: char;
+Wortname: byte;
 Satzdeklariert: boolean;
-Leerzeichenstelle: char;
-Leerzeichen: char;
-Woerter: char;
-Wortlaenge: char;
-TempWortlaenge: char;
+Leerzeichenstelle: integer;
+Leerzeichen: integer;
+Woerter: integer;
+Wortlaenge: integer;
+TempWortlaenge: integer;
 
 
 
@@ -90,7 +91,10 @@ readln(Menue);
 
     if (Menue = 'd') and Satzdeklariert then
     begin
+        if Satz[Wortname] <> ' ' then
+        begin
 
+        end;
 
     end;
 
