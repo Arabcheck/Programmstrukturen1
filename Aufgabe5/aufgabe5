@@ -1,139 +1,222 @@
 program aufgabe5;
 {$R+,Q+,X-}
 uses
-SysUtils,Math;
-
+  SysUtils, Math;
 
 var
-
-Zahl: integer;
-Satz: String;
-Menue: char;
-Wortname: byte;
-Satzdeklariert: boolean;
-Leerzeichenstelle: integer;
-Leerzeichen: integer;
-Woerter: integer;
-Wortlaenge: integer;
-TempWortlaenge: integer;
-StartPos, EndPos, AktuellesWort, ZielWort: integer;
-Wortnummer: integer;
-ErstesZeichen: char;
-
+  Zahl: integer;
+  Satz: string;
+  Menue: char;
+  Wortname: byte;
+  Satzdeklariert: boolean;
+  Leerzeichenstelle: integer;
+  Leerzeichen: integer;
+  Woerter: integer;
+  Wortlaenge: integer;
+  TempWortlaenge: integer;
+  WortStart: integer;
+  WortEnde: integer;
+  ErsterBuchstabe: char;
+  ErsteAusgabe: boolean;
+  Zahlwort: byte;
+  EnthaeltZahlwort: boolean;
+  NeueLaenge: integer;
+  i: integer;
+  StartPos, EndPos, AktuellesWort, ZielWort: integer;
+  Wortnummer: integer;
+  ErstesZeichen: char;
 
 begin
-Leerzeichenstelle := 0;
-Satz := '';
-Leerzeichen := 0;
-Satzdeklariert := false;
+  Leerzeichenstelle := 0;
+  Satz := '';
+  Leerzeichen := 0;
+  Satzdeklariert := false;
 
-
-
-
-repeat
-writeln('Wählen sie den Menüpunkt aus!');
-writeln('Satz eingeben: a');
-writeln('Anzahl Wörter im Satz bestimmen: b');
-writeln('Alle Wortlängen im Satz ausgeben: c');
-writeln('Alle Wörter ausgeben, die mit einem Konsonanten beginnen, d');
-writeln('Alle Wörter aus dem Satz löschen, die ein Zahlwort beinhalten: e');
-writeln('Ende: x');
-
-
-readln(Menue);
+  repeat
+    writeln('Wählen sie den Menüpunkt aus!');
+    writeln('Satz eingeben: a');
+    writeln('Anzahl Wörter im Satz bestimmen: b');
+    writeln('Alle Wortlängen im Satz ausgeben: c');
+    writeln('Alle Wörter ausgeben, die mit einem Konsonanten beginnen: d');
+    writeln('Alle Wörter aus dem Satz löschen, die ein Zahlwort beinhalten: e');
+    writeln('Ende: x');
+    readln(Menue);
 
     if Menue = 'a' then
     begin
-    writeln('Geben sie ihren Satz ein');
-    readln(Satz);
-    writeln(Satz);
-    Satzdeklariert := true;
+      writeln('Geben sie ihren Satz ein');
+      readln(Satz);
+      writeln(Satz);
+      Satzdeklariert := true;
     end;
-
 
     if (Menue = 'b') and Satzdeklariert then
     begin
-    for Leerzeichenstelle := 1 to length(Satz) do
-    begin
-    if Satz[Leerzeichenstelle] = ' ' then
+      Leerzeichen := 0;
+      for Leerzeichenstelle := 1 to Length(Satz) do
+      begin
+        if Satz[Leerzeichenstelle] = ' ' then
         begin
-        writeln('Leerzeichen an Position: ', Leerzeichenstelle);
-        Leerzeichen := Leerzeichen + 1;
+          writeln('Leerzeichen an Position: ', Leerzeichenstelle);
+          Leerzeichen := Leerzeichen + 1;
         end;
-        end;
-    Woerter := Leerzeichen + 1;
-    writeln('Die Anzahl an Leerzeichen betraegt: ',Leerzeichen);
-    writeln('Die Anzahl an Woerten betraegt: ', Woerter);
-
+      end;
+      Woerter := Leerzeichen + 1;
+      writeln('Die Anzahl an Leerzeichen beträgt: ', Leerzeichen);
+      writeln('Die Anzahl an Wörtern beträgt: ', Woerter);
     end;
+
     if (Menue = 'c') and Satzdeklariert then
     begin
-        Woerter := 0;
-        TempWortlaenge := 0;
-        for Wortlaenge := 1 to length(Satz) do
-        begin
-            if Satz[Wortlaenge] <> ' ' then
-            TempWortlaenge := TempWortlaenge + 1
-            else
-            begin
-            Woerter := Woerter + 1;
-            writeln('Die Laenge des ', Woerter , ' Wortes betraegt: ', TempWortlaenge);
-            TempWortlaenge := 0; 
-            end;
-        end;
-        
-        if TempWortlaenge > 0 then
-        begin
-            writeln('Die Laenge des letzten Wortes betraegt: ', TempWortlaenge);
-        end;
-
-
-    end;
-
-
-if (Menue = 'd') and Satzdeklariert then
-begin
-  StartPos := 1;
-  WortNummer := 1;
-
-  for EndPos := 1 to Length(Satz) + 1 do
-  begin
-    if (EndPos > Length(Satz)) or (Satz[EndPos] = ' ') then
-    begin
-      // Erstes Zeichen des Wortes holen
-      if EndPos > StartPos then // Leere Wörter vermeiden
+      Woerter := 0;
+      TempWortlaenge := 0;
+      for Wortlaenge := 1 to Length(Satz) do
       begin
-        // Hole das erste Zeichen des aktuellen Wortes
-        
-        ErstesZeichen := Satz[StartPos];
-
-        // Prüfe, ob es ein Konsonant ist
-        if not (LowerCase(ErstesZeichen) in ['a', 'e', 'i', 'o', 'u']) and
-           (ErstesZeichen in ['A'..'Z', 'a'..'z']) then
+        if Satz[Wortlaenge] <> ' ' then
+          TempWortlaenge := TempWortlaenge + 1
+        else
         begin
-          writeln('Wort ', WortNummer, ': ', Copy(Satz, StartPos, EndPos - StartPos));
+          Woerter := Woerter + 1;
+          writeln('Die Länge des ', Woerter, '. Wortes beträgt: ', TempWortlaenge);
+          TempWortlaenge := 0;
         end;
-        WortNummer := WortNummer + 1;
       end;
-      StartPos := EndPos + 1;
+      if TempWortlaenge > 0 then
+      begin
+        Woerter := Woerter + 1;
+        writeln('Die Länge des ', Woerter, '. Wortes beträgt: ', TempWortlaenge);
+      end;
     end;
-  end;
-end;
 
+    if (Menue = 'd') and Satzdeklariert then
+    begin
+    StartPos := 1;
+    WortNummer := 1;
+
+    for EndPos := 1 to Length(Satz) + 1 do
+    begin
+        if (EndPos > Length(Satz)) or (Satz[EndPos] = ' ') then
+        begin
+        // Erstes Zeichen des Wortes holen
+        if EndPos > StartPos then // Leere Wörter vermeiden
+        begin
+            // Hole das erste Zeichen des aktuellen Wortes
+            
+            ErstesZeichen := Satz[StartPos];
+
+            // Prüfe, ob es ein Konsonant ist
+            if not (LowerCase(ErstesZeichen) in ['a', 'e', 'i', 'o', 'u']) and
+            (ErstesZeichen in ['A'..'Z', 'a'..'z']) then
+            begin
+            writeln('Wort ', WortNummer, ': ', Copy(Satz, StartPos, EndPos - StartPos));
+            end;
+            WortNummer := WortNummer + 1;
+        end;
+        StartPos := EndPos + 1;
+        end;
+    end;
+    end;
 
     if (Menue = 'e') and Satzdeklariert then
     begin
-
-
+      NeueLaenge := 0;
+      WortStart := 1;
+      for WortEnde := 1 to Length(Satz) + 1 do
+      begin
+        if (WortEnde > Length(Satz)) or (Satz[WortEnde] = ' ') then
+        begin
+          Wortlaenge := WortEnde - WortStart;
+          if Wortlaenge > 0 then
+          begin
+            EnthaeltZahlwort := false;
+            for i := WortStart to WortEnde - 1 do
+            begin
+              if (i + 3 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 'e') and
+                 (LowerCase(Satz[i+1]) = 'i') and
+                 (LowerCase(Satz[i+2]) = 'n') and
+                 (LowerCase(Satz[i+3]) = 's') then EnthaeltZahlwort := true;
+              if (i + 3 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 'z') and
+                 (LowerCase(Satz[i+1]) = 'w') and
+                 (LowerCase(Satz[i+2]) = 'e') and
+                 (LowerCase(Satz[i+3]) = 'i') then EnthaeltZahlwort := true;
+              if (i + 3 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 'd') and
+                 (LowerCase(Satz[i+1]) = 'r') and
+                 (LowerCase(Satz[i+2]) = 'e') and
+                 (LowerCase(Satz[i+3]) = 'i') then EnthaeltZahlwort := true;
+              if (i + 3 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 'v') and
+                 (LowerCase(Satz[i+1]) = 'i') and
+                 (LowerCase(Satz[i+2]) = 'e') and
+                 (LowerCase(Satz[i+3]) = 'r') then EnthaeltZahlwort := true;
+              if (i + 3 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 'f') and
+                 (LowerCase(Satz[i+1]) = 'ü') and
+                 (LowerCase(Satz[i+2]) = 'n') and
+                 (LowerCase(Satz[i+3]) = 'f') then EnthaeltZahlwort := true;
+              if (i + 4 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 'f') and
+                 (LowerCase(Satz[i+1]) = 'u') and
+                 (LowerCase(Satz[i+2]) = 'e') and
+                 (LowerCase(Satz[i+3]) = 'n') and
+                 (LowerCase(Satz[i+4]) = 'f') then EnthaeltZahlwort := true;
+              if (i + 4 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 's') and
+                 (LowerCase(Satz[i+1]) = 'e') and
+                 (LowerCase(Satz[i+2]) = 'c') and
+                 (LowerCase(Satz[i+3]) = 'h') and
+                 (LowerCase(Satz[i+4]) = 's') then EnthaeltZahlwort := true;
+              if (i + 5 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 's') and
+                 (LowerCase(Satz[i+1]) = 'i') and
+                 (LowerCase(Satz[i+2]) = 'e') and
+                 (LowerCase(Satz[i+3]) = 'b') and
+                 (LowerCase(Satz[i+4]) = 'e') and
+                 (LowerCase(Satz[i+5]) = 'n') then EnthaeltZahlwort := true;
+              if (i + 3 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 'a') and
+                 (LowerCase(Satz[i+1]) = 'c') and
+                 (LowerCase(Satz[i+2]) = 'h') and
+                 (LowerCase(Satz[i+3]) = 't') then EnthaeltZahlwort := true;
+              if (i + 3 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 'n') and
+                 (LowerCase(Satz[i+1]) = 'e') and
+                 (LowerCase(Satz[i+2]) = 'u') and
+                 (LowerCase(Satz[i+3]) = 'n') then EnthaeltZahlwort := true;
+              if (i + 3 <= WortEnde - 1) and
+                 (LowerCase(Satz[i]) = 'z') and
+                 (LowerCase(Satz[i+1]) = 'e') and
+                 (LowerCase(Satz[i+2]) = 'h') and
+                 (LowerCase(Satz[i+3]) = 'n') then EnthaeltZahlwort := true;
+            end;
+            if not EnthaeltZahlwort then
+            begin
+              if NeueLaenge > 0 then
+              begin
+                Satz[NeueLaenge + 1] := ' ';
+                NeueLaenge := NeueLaenge + 1;
+              end;
+              for i := WortStart to WortEnde - 1 do
+              begin
+                Satz[NeueLaenge + 1] := Satz[i];
+                NeueLaenge := NeueLaenge + 1;
+              end;
+            end;
+          end;
+          WortStart := WortEnde + 1;
+        end;
+      end;
+      SetLength(Satz, NeueLaenge);
+      writeln('Satz ohne Zahlwörter: ', Satz);
     end;
 
     if (Menue = 'x') then
     begin
-    writeln('Das Programm wird sich Selbst Zerstören!');
+      writeln('Das Programm wird sich Selbst Zerstören!');
     end;
 
-until not (Menue = 'a') xor (Menue = 'b') xor (Menue = 'c') xor (Menue = 'd') xor (Menue = 'e') or (Menue = 'x');
-
+  until Menue = 'x';
 
 end.
-
