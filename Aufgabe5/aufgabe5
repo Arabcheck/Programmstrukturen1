@@ -1,0 +1,96 @@
+//Platzhalter
+program aufgabe5;
+{$R+,Q+,X-}
+uses
+SysUtils,Math;
+
+
+var
+
+Zahl: byte;
+Menue: String;
+Satz: String;
+Satzdeklariert: boolean;
+Leerzeichenstelle: byte;
+Leerzeichen: byte;
+Woerter: byte;
+Wortlaenge: byte;
+
+
+
+begin
+Leerzeichenstelle := 0;
+Satz := '';
+Leerzeichen := 0;
+Satzdeklariert := false;
+writeln('Wählen sie den Menüpunkt aus!');
+writeln('Satz eingeben: a');
+
+
+
+readln(Menue);
+
+
+
+repeat
+
+
+    if Menue = 'a' then
+    begin
+    writeln('Geben sie ihren Satz ein');
+    readln(Satz);
+    writeln(Satz);
+    Satzdeklariert := true;
+    end;
+
+
+    if (Menue = 'b') and (Satzdeklariert = true) then
+    begin
+    for Leerzeichenstelle := 1 to length(Satz) do
+    begin
+    if Satz[Leerzeichenstelle] = ' ' then
+        begin
+        writeln('Leerzeichen an Position: ', Leerzeichenstelle);
+        Leerzeichen := Leerzeichen + 1;
+        end;
+        end;
+    Woerter := Leerzeichen + 1;
+    writeln('Die Anzahl an Leerzeichen betraegt: ',Leerzeichen);
+    writeln('Die Anzahl an Woerten betraegt: ', Leerzeichen);
+
+
+
+
+    end;
+    if (Menue = 'c') and (Satzdeklariert = true) then
+    begin
+    for Wortlaenge := 1 to length(Satz) do
+    if Satz[Wortlaenge] <> ' ' then
+        begin
+        Wortlaenge := Wortlaenge + 1;
+        else
+        writeln('Die Laenge des Wortes betraegt: ', Wortlaenge);
+        Woertlaenge := '';
+        end;
+
+
+    end;
+
+
+    if (Menue = 'd') and (Satzdeklariert = true) then
+    begin
+
+
+    end;
+
+    if (Menue = 'e') and (Satzdeklariert = true) then
+    begin
+
+
+    end;
+
+until not (Menue = 'a') or (Menue = 'b') or (Menue = 'c') or (Menue = 'd') or (Menue = 'e');
+
+
+end.
+
