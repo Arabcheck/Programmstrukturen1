@@ -1,1 +1,48 @@
+program aufgabe6;
+{$R+,Q+,X-}
+uses
+  SysUtils, Math, crt;
 
+
+  function isDivider(num, divider: word): boolean;
+  begin
+    if divider = 0 then    
+      isDivider := false;
+    else 
+       isDivider := (num mod divider = 0);
+  end;
+
+
+   function getNextDividerBiggerThan(num, limit : word) : word;
+   begin
+        white limit <> 0 do
+        begin
+            getNextDividerBiggerThan = limit;
+            limit := num mod limit;
+            num = getNextDividerBiggerThan;
+        end;
+        getNextDividerBiggerThan = num;
+    end;
+
+
+
+    function isPrime(num : word) : boolean;
+    
+    var i : integer;
+        Primzahl : boolean;
+
+    begin
+        if num < 2 then
+            Primzahl = false
+        else
+        begin
+          Primzahl := true;
+          for i := 2 to trunc(sqrt(n)) do
+            if n mod i = o then
+                Primzahl = false
+        end;
+        isPrime := Primzahl;
+    end;
+
+    function isPerfectNumber(num : word) : boolean;
+        
