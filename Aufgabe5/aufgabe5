@@ -1,4 +1,3 @@
-//Platzhalter
 program aufgabe5;
 {$R+,Q+,X-}
 uses
@@ -15,6 +14,7 @@ Leerzeichenstelle: byte;
 Leerzeichen: byte;
 Woerter: byte;
 Wortlaenge: byte;
+TempWortlaenge: byte;
 
 
 
@@ -23,17 +23,21 @@ Leerzeichenstelle := 0;
 Satz := '';
 Leerzeichen := 0;
 Satzdeklariert := false;
-writeln('Wählen sie den Menüpunkt aus!');
-writeln('Satz eingeben: a');
 
-
-
-readln(Menue);
 
 
 
 repeat
+writeln('Wählen sie den Menüpunkt aus!');
+writeln('Satz eingeben: a');
+writeln('Anzahl Wörter im Satz bestimmen: b');
+writeln('Alle Wortlängen im Satz ausgeben: c');
+writeln('Alle Wörter ausgeben, die mit einem Konsonanten beginnen, d');
+writeln('Alle Wörter aus dem Satz löschen, die ein Zahlwort beinhalten: e');
+writeln('Ende: x');
 
+
+readln(Menue);
 
     if Menue = 'a' then
     begin
@@ -56,21 +60,27 @@ repeat
         end;
     Woerter := Leerzeichen + 1;
     writeln('Die Anzahl an Leerzeichen betraegt: ',Leerzeichen);
-    writeln('Die Anzahl an Woerten betraegt: ', Leerzeichen);
-
-
-
+    writeln('Die Anzahl an Woerten betraegt: ', Woerter);
 
     end;
     if (Menue = 'c') and (Satzdeklariert = true) then
     begin
-    for Wortlaenge := 1 to length(Satz) do
-    if Satz[Wortlaenge] <> ' ' then
+        TempWortlaenge := 0;
+        for Wortlaenge := 1 to length(Satz) do
         begin
-        Wortlaenge := Wortlaenge + 1;
-        else
-        writeln('Die Laenge des Wortes betraegt: ', Wortlaenge);
-        Woertlaenge := '';
+            if Satz[Wortlaenge] <> ' ' then
+            TempWortlaenge := TempWortlaenge + 1
+            else
+            begin
+            Woerter := Woerter + 1;
+            writeln('Die Laenge des ', Woerter , ' Wortes betraegt: ', TempWortlaenge);
+            TempWortlaenge := 0; // Reset for the next word
+            end;
+        end;
+        // Output the length of the last word if Satz doesn't end with a space
+        if TempWortlaenge > 0 then
+        begin
+            writeln('Die Laenge des letzten Wortes betraegt: ', TempWortlaenge);
         end;
 
 
@@ -86,6 +96,11 @@ repeat
     if (Menue = 'e') and (Satzdeklariert = true) then
     begin
 
+
+    end;
+
+    if (Menue = 'x') then
+    begin
 
     end;
 
