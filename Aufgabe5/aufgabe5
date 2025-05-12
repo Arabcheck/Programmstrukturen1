@@ -1,3 +1,5 @@
+// Luka Pervan & Akiel Leabi 
+// Ein Programm welches einen String auf verschiede Weisen manipulieren und ausgeben kann
 program aufgabe5;
 {$R+,Q+,X-}
 uses
