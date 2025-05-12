@@ -6,15 +6,15 @@ SysUtils,Math;
 
 var
 
-Zahl: byte;
+Zahl: char;
 Menue: String;
 Satz: String;
 Satzdeklariert: boolean;
-Leerzeichenstelle: byte;
-Leerzeichen: byte;
-Woerter: byte;
-Wortlaenge: byte;
-TempWortlaenge: byte;
+Leerzeichenstelle: char;
+Leerzeichen: char;
+Woerter: char;
+Wortlaenge: char;
+TempWortlaenge: char;
 
 
 
@@ -63,7 +63,7 @@ readln(Menue);
     writeln('Die Anzahl an Woerten betraegt: ', Woerter);
 
     end;
-    if (Menue = 'c') and (Satzdeklariert = true) then
+    if (Menue = 'c') and Satzdeklariert then
     begin
         Woerter := 0;
         TempWortlaenge := 0;
@@ -88,13 +88,13 @@ readln(Menue);
     end;
 
 
-    if (Menue = 'd') and (Satzdeklariert = true) then
+    if (Menue = 'd') and Satzdeklariert then
     begin
 
 
     end;
 
-    if (Menue = 'e') and (Satzdeklariert = true) then
+    if (Menue = 'e') and Satzdeklariert then
     begin
 
 
