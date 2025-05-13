@@ -1,48 +1,84 @@
+// Akiel Leabi und Luka Pervan
+// Vier Mathematische Funktonen und vier Prozeduren zum testen der Funktionen
 program aufgabe6;
 {$R+,Q+,X-}
 uses
   SysUtils, Math, crt;
 
-
-  function isDivider(num, divider: word): boolean;
-  begin
-    if divider = 0 then    
-      isDivider := false;
-    else 
-       isDivider := (num mod divider = 0);
-  end;
-
-
-   function getNextDividerBiggerThan(num, limit : word) : word;
-   begin
-        white limit <> 0 do
-        begin
-            getNextDividerBiggerThan = limit;
-            limit := num mod limit;
-            num = getNextDividerBiggerThan;
-        end;
-        getNextDividerBiggerThan = num;
+    // Functions
+    // Die Funktion gibt den Rest zurück, wenn vorhanden
+    function isDivider(num, divider: word): boolean;
+    begin
+    if divider = 0 then
+        isDivider := false // Kein Divider gefunden
+    else
+        isDivider := (num mod divider = 0);
     end;
 
+    // Die Funktion findet den nächst höhsten teiler
+    function getNextDividerBiggerThan(num, limit: word): word;
+    var
+    i: word;
+    begin
+    for i := limit + 1 to num do
+        if (num mod i = 0) then
+        begin
+        getNextDividerBiggerThan := i;
+        exit;
+        end;
+    getNextDividerBiggerThan := 0; // Kein Teiler gefunden
+    end;
 
-
-    function isPrime(num : word) : boolean;
-    
-    var i : integer;
-        Primzahl : boolean;
+    // Prüft auf Primzahl
+    function isPrime(num: word): boolean;
+    var
+    i: integer;
+    primzahl: boolean; // break umgehen
 
     begin
-        if num < 2 then
-            Primzahl = false
-        else
+    if num < 2 then
+        isPrime := false // ist keine Primzahl
+    else
+    begin
+        primzahl := true;
+        i := 2;
+        for i := 2 to trunc(sqrt(num)) do
+        if num mod i = 0 then
         begin
-          Primzahl := true;
-          for i := 2 to trunc(sqrt(n)) do
-            if n mod i = o then
-                Primzahl = false
+            primzahl := false;
+            i := i + 1; 
         end;
-        isPrime := Primzahl;
+        isPrime := primzahl; 
+    end;
     end;
 
+    // Prueft ob die zahl vollkommen ist oder nicht
     function isPerfectNumber(num : word) : boolean;
-        
+    var
+      i, sum: word;
+    begin
+        sum = 0;
+        for i: 1 to num - 1 do
+            if num mod i = 0 then
+                sum := sum + i;
+        isPerfectNumber := (sum = num);
+    end;
+
+
+    // Procedure
+
+
+    procedure testIsDivider(var testsOK, testsFailed : byte);
+    
+
+
+
+    procedure testGetNextDividerBiggerThan(var testsOK, testsFailed : byte);
+
+
+
+    procedure testIsPrime(var testsOK, testsFailed : byte);
+
+
+
+    procedure testIsPerfectNumber(var testsOK, testsFailed : byte);
