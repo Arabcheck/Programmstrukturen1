@@ -1,15 +1,15 @@
 // Luka Pervan & Akiel Leabi 
 // Ein Programm welches einen String auf verschiede Weisen manipulieren und ausgeben kann
 program aufgabe5;
+{$APPTYPE CONSOLE}
 {$R+,Q+,X-}
+
 uses
   SysUtils, Math;
 
 var
-  Zahl: integer;
   Satz: string;
   Menue: char;
-  Wortname: byte;
   Satzdeklariert: boolean;
   Leerzeichenstelle: integer;
   Leerzeichen: integer;
@@ -18,15 +18,14 @@ var
   TempWortlaenge: integer;
   WortStart: integer;
   WortEnde: integer;
-  ErsterBuchstabe: char;
-  ErsteAusgabe: boolean;
-  Zahlwort: byte;
   EnthaeltZahlwort: boolean;
   NeueLaenge: integer;
   i: integer;
-  StartPos, EndPos, AktuellesWort, ZielWort: integer;
+  StartPos, EndPos: integer;
   Wortnummer: integer;
   ErstesZeichen: char;
+  Nurleerzeichen: boolean;
+  stringpruefer: integer;
 
 begin
   Leerzeichenstelle := 0;
@@ -43,7 +42,7 @@ begin
     writeln('Alle Wörter aus dem Satz löschen, die ein Zahlwort beinhalten: e');
     writeln('Ende: x');
     readln(Menue);
-
+    //Eingabe des Satzes
     if Menue = 'a' then
     begin
       writeln('Geben sie ihren Satz ein');
@@ -51,23 +50,36 @@ begin
       writeln(Satz);
       Satzdeklariert := true;
     end;
-
+    //Überprüfung ob der Satz deklariert wurde
+    //Berechnung der Anzahl an Wörtern mithilfe von Leerzeichen
     if (Menue = 'b') and Satzdeklariert then
     begin
+      Nurleerzeichen := true;
       Leerzeichen := 0;
       for Leerzeichenstelle := 1 to Length(Satz) do
       begin
         if Satz[Leerzeichenstelle] = ' ' then
         begin
-          writeln('Leerzeichen an Position: ', Leerzeichenstelle);
+          //writeln('Leerzeichen an Position: ', Leerzeichenstelle);
           Leerzeichen := Leerzeichen + 1;
         end;
       end;
-      Woerter := Leerzeichen + 1;
-      writeln('Die Anzahl an Leerzeichen beträgt: ', Leerzeichen);
+      for stringpruefer := 1 to Length(Satz) do
+        if satz[stringpruefer] <> ' ' then
+        begin
+          Nurleerzeichen := false;
+          end;
+        
+      if Nurleerzeichen = false then
+      begin
+        Woerter := Leerzeichen + 1;
+        end;
+
+      //writeln('Die Anzahl an Leerzeichen beträgt: ', Leerzeichen);
       writeln('Die Anzahl an Wörtern beträgt: ', Woerter);
     end;
-
+    //Berechnung der Wortlängen
+    //Die Wortlängen werden in einer Schleife ermittelt, die Leerzeichen werden als Trennzeichen verwendet
     if (Menue = 'c') and Satzdeklariert then
     begin
       Woerter := 0;
@@ -89,7 +101,7 @@ begin
         writeln('Die Länge des ', Woerter, '. Wortes beträgt: ', TempWortlaenge);
       end;
     end;
-
+    //Ausgabe der Wörter, die mit einem Konsonanten beginnen
     if (Menue = 'd') and Satzdeklariert then
     begin
     StartPos := 1;
@@ -118,7 +130,7 @@ begin
         end;
     end;
     end;
-
+    //Löschen der Wörter, die ein Zahlwort beinhalten
     if (Menue = 'e') and Satzdeklariert then
     begin
       NeueLaenge := 0;
