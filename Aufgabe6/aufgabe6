@@ -5,80 +5,152 @@ program aufgabe6;
 uses
   SysUtils, Math, crt;
 
-    // Functions
-    // Die Funktion gibt den Rest zurück, wenn vorhanden
-    function isDivider(num, divider: word): boolean;
+// Überprüft, ob eine Zahl durch einen bestimmten Teiler teilbar ist.
+// @param
+//   num - zu überprüfende Zahl
+//   divider - potentieller Teiler
+// @return
+//   True, wenn num durch divider teilbar ist oder False, wenn nicht
+//   bzw. wenn divider 0 ist
+function isDivider(num, divider: word): boolean;
+begin
+  if divider = 0 then
+    isDivider := false // Kein Divider gefunden
+  else
+    isDivider := (num mod divider = 0);
+end;
+
+// Findet den nächsten Teiler einer Zahl, der größer als ein gegebener Wert ist.
+// @param
+//   num - Zahl, für die ein Teiler gesucht wird
+//   limit - untere Grenze, ab der nach Teilern gesucht werden soll
+// @return
+//   Den kleinsten Teiler von num, der größer als limit ist, oder 0,
+//   wenn kein solcher Teiler existiert
+function getNextDividerBiggerThan(num, limit: word): word;
+var
+  i: word;
+begin
+  for i := limit + 1 to num do
+    if (num mod i = 0) then
     begin
-    if divider = 0 then
-        isDivider := false // Kein Divider gefunden
-    else
-        isDivider := (num mod divider = 0);
+      getNextDividerBiggerThan := i;
+      exit;
     end;
+  getNextDividerBiggerThan := 0; // Kein Teiler gefunden
+end;
 
-    // Die Funktion findet den nächst höhsten teiler
-    function getNextDividerBiggerThan(num, limit: word): word;
-    var
-    i: word;
-    begin
-    for i := limit + 1 to num do
-        if (num mod i = 0) then
-        begin
-        getNextDividerBiggerThan := i;
-        exit;
-        end;
-    getNextDividerBiggerThan := 0; // Kein Teiler gefunden
-    end;
+// Überprüft, ob eine Zahl eine Primzahl ist.
+// Eine Primzahl ist nur durch 1 und sich selbst teilbar.
+// @param
+//   num - zu überprüfende Zahl
+// @return
+//   True, wenn num eine Primzahl ist, sonst False
+function isPrime(num: word): boolean;
+var
+  i: integer;
+  primzahl: boolean; // break umgehen
 
-    // Prüft auf Primzahl
-    function isPrime(num: word): boolean;
-    var
-    i: integer;
-    primzahl: boolean; // break umgehen
-
-    begin
-    if num < 2 then
-        isPrime := false // ist keine Primzahl
-    else
-    begin
-        primzahl := true;
-        i := 2;
-        for i := 2 to trunc(sqrt(num)) do
-        if num mod i = 0 then
-        begin
-            primzahl := false;
-            i := i + 1; 
-        end;
-        isPrime := primzahl; 
-    end;
-    end;
-
-    // Prueft ob die zahl vollkommen ist oder nicht
-    function isPerfectNumber(num : word) : boolean;
-    var
-      i, sum: word;
-    begin
-        sum = 0;
-        for i: 1 to num - 1 do
-            if num mod i = 0 then
-                sum := sum + i;
-        isPerfectNumber := (sum = num);
-    end;
+begin
+  if num < 2 then
+    isPrime := false // ist keine Primzahl
+  else
+  begin
+    primzahl := true;
+    for i := 2 to trunc(sqrt(num)) do
+      if num mod i = 0 then
+      begin
+        primzahl := false;
+      end;
+    isPrime := primzahl; 
+  end;
+    i := i + 1; 
+end;
 
 
-    // Procedure
+// Überprüft, ob eine Zahl eine vollkommene Zahl ist.
+// Eine vollkommene Zahl ist gleich der Summe ihrer echten Teiler.
+// Beispiel: 6 = 1 + 2 + 3
+// @param
+//   num - zu überprüfende Zahl
+// @return
+//   True, wenn num eine vollkommene Zahl ist, sonst False
+function isPerfectNumber(num : word) : boolean;
+var
+  i, sum: word;
+begin
+  sum := 0;
+  for i := 1 to num - 1 do
+    if num mod i = 0 then
+      sum := sum + i;
+  isPerfectNumber := (sum = num);
+end;
+
+//     // Procedure
 
 
-    procedure testIsDivider(var testsOK, testsFailed : byte);
+  procedure testIsDivider(var testsOK, testsFailed : byte);
     
 
 
 
-    procedure testGetNextDividerBiggerThan(var testsOK, testsFailed : byte);
+//     procedure testGetNextDividerBiggerThan(var testsOK, testsFailed : byte);
 
 
 
-    procedure testIsPrime(var testsOK, testsFailed : byte);
+//     procedure testIsPrime(var testsOK, testsFailed : byte);
 
 
 
-    procedure testIsPerfectNumber(var testsOK, testsFailed : byte);
+//     procedure testIsPerfectNumber(var testsOK, testsFailed : byte);
+
+
+
+
+
+
+
+
+
+// Tests
+var
+    testNum: byte;
+    expectedRes : boolean;
+
+//begin
+//   // Test 1: 10 durch 2 (sollte true sein)
+//   if isDivider(10, 2) then
+//     writeln('Test 1 bestanden')
+//   else
+//     writeln('Test 1 fehlgeschlagen');
+
+//   // Test 2: 10 durch 3 (sollte false sein)
+//   if not isDivider(10, 3) then
+//     writeln('Test 2 bestanden')
+//   else
+//     writeln('Test 2 fehlgeschlagen');
+
+//   // Test 3: 0 durch 5 (sollte true sein, da 0 durch alles teilbar ist)
+//   if isDivider(0, 5) then
+//     writeln('Test 3 bestanden')
+//   else
+//     writeln('Test 3 fehlgeschlagen');
+
+//   // Test 4: 10 durch 0 (sollte false sein, Division durch 0)
+//   if not isDivider(10, 0) then
+//     writeln('Test 4 bestanden')
+//   else
+//     writeln('Test 4 fehlgeschlagen');
+// end.
+
+
+
+begin
+testNum := 42;
+expectedRes := false;
+write('isPrim(', testNum, ') -> ', expectedRes);
+if isPrime(testNum) = expectedRes then 
+    writeln(' OK') 
+else 
+    writeln(' FEHLER: ', isPrime(testNum));
+end.
