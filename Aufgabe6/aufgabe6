@@ -82,10 +82,17 @@ var
   i, sum: word;
 begin
   sum := 0;
+  if num > 0 then
+  begin
   for i := 1 to num - 1 do
     if num mod i = 0 then
       sum := sum + i;
   isPerfectNumber := (sum = num);
+end
+else
+begin
+isperfectnumber := false; // ist keine vollkommene Zahl
+end;
 end;
 
 //     // Procedure
@@ -160,7 +167,7 @@ if isperfectnumber(6) then
   writeln('Test 2 bestanden')
 else
   writeln('Test 2 fehlgeschlagen');
-if isperfectnumber(28) then
+if isperfectnumber(8234) then
   writeln('Test 3 bestanden')
 else
   writeln('Test 3 fehlgeschlagen');
@@ -172,6 +179,7 @@ else
   writeln('Test 5 bestanden')
 else
   writeln('Test 5 fehlgeschlagen');
+
 
 
 
