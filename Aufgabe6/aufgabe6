@@ -152,21 +152,32 @@ var
 
 
 begin
-writeln('Bitte geben Sie eine Zahl ein:');
-readln(Menue);
+if isperfectnumber(2) then
+  writeln('Test 1 bestanden')
+else
+  writeln('Test 1 fehlgeschlagen');
+if isperfectnumber(6) then
+  writeln('Test 2 bestanden')
+else
+  writeln('Test 2 fehlgeschlagen');
+if isperfectnumber(28) then
+  writeln('Test 3 bestanden')
+else
+  writeln('Test 3 fehlgeschlagen');
+if isperfectnumber(496) then
+  writeln('Test 4 bestanden')
+else
+  writeln('Test 4 fehlgeschlagen');
+  if isperfectnumber(0) then
+  writeln('Test 5 bestanden')
+else
+  writeln('Test 5 fehlgeschlagen');
 
 
-if Menue = 1 then
-begin
-testNum = ISperfectNumber(numbervalue);
-readln(numbervalue);
-numbervalue := num;
 
 
 
 
-
-end;
 
 
 end.
