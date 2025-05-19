@@ -1,8 +1,10 @@
 // Akiel Leabi und Luka Pervan
 // Vier Mathematische Funktonen und vier Prozeduren zum testen der Funktionen
 program aufgabe6;
+{Apptype console}
 {$R+,Q+,X-}
 uses
+ //CRT zu Windows aendern und jeweilige Befehle zu den Delphi Befehlen verändern
   SysUtils, Math, crt;
 
 // Überprüft, ob eine Zahl durch einen bestimmten Teiler teilbar ist.
@@ -90,6 +92,9 @@ end;
 
 
   procedure testIsDivider(var testsOK, testsFailed : byte);
+  begin
+
+  end;
     
 
 
@@ -116,6 +121,7 @@ end;
 var
     testNum: byte;
     expectedRes : boolean;
+    Menue : byte;
 
 //begin
 //   // Test 1: 10 durch 2 (sollte true sein)
@@ -146,11 +152,21 @@ var
 
 
 begin
-testNum := 42;
-expectedRes := false;
-write('isPrim(', testNum, ') -> ', expectedRes);
-if isPrime(testNum) = expectedRes then 
-    writeln(' OK') 
-else 
-    writeln(' FEHLER: ', isPrime(testNum));
+writeln('Bitte geben Sie eine Zahl ein:');
+readln(Menue);
+
+
+if Menue = 1 then
+begin
+testNum = ISperfectNumber(numbervalue);
+readln(numbervalue);
+numbervalue := num;
+
+
+
+
+
+end;
+
+
 end.
