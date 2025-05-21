@@ -31,14 +31,18 @@ end;
 function getNextDividerBiggerThan(num, limit: word): word;
 var
   i: word;
+  found: boolean;
+  result: word;
 begin
+  found := false;
+  result := 0;
   for i := limit + 1 to num do
-    if (num mod i = 0) then
+    if (not found) and (num mod i = 0) then
     begin
-      getNextDividerBiggerThan := i;
-      exit;
+      result := i;
+      found := true;
     end;
-  getNextDividerBiggerThan := 0; // Kein Teiler gefunden
+  getNextDividerBiggerThan := result;
 end;
 
 // Überprüft, ob eine Zahl eine Primzahl ist.
@@ -100,53 +104,106 @@ begin
   testsFailed := 0;
 
   // Testfall 1
-  testNum := 10; testDivider := 2; expectedRes := true;
+  testNum := 10; 
+  testDivider := 2; 
+  expectedRes := true;
   actualRes := isDivider(testNum, testDivider);
   write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 2
-  testNum := 10; testDivider := 3; expectedRes := false;
+  testNum := 10; 
+  testDivider := 3; 
+  expectedRes := false;
   actualRes := isDivider(testNum, testDivider);
   write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
   if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 3
-  testNum := 0; testDivider := 5; expectedRes := true;
+  testNum := 0; 
+  testDivider := 5; 
+  expectedRes := true;
   actualRes := isDivider(testNum, testDivider);
   write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
   if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
-  end;
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+    begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
+    end;
 
   // Testfall 4
-  testNum := 10; testDivider := 0; expectedRes := false;
+  testNum := 10; 
+  testDivider := 0; 
+  expectedRes := false;
   actualRes := isDivider(testNum, testDivider);
   write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 5
-  testNum := 1; testDivider := 1; expectedRes := true;
+  testNum := 1; 
+  testDivider := 1; 
+  expectedRes := true;
   actualRes := isDivider(testNum, testDivider);
   write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  if actualRes = expectedRes then 
+  begin
+  TextColor(LightGreen); 
+  writeln('OK'); 
+  TextColor(White); 
+  inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 end;
 
@@ -162,55 +219,109 @@ begin
   testsFailed := 0;
 
   // Testfall 1
-  num := 10; limit := 1; expectedRes := 2;
+  num := 10; 
+  limit := 1; 
+  expectedRes := 2;
   actualRes := getNextDividerBiggerThan(num, limit);
   write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
   if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 2
-  num := 10; limit := 2; expectedRes := 5;
+  num := 10; 
+  limit := 2; 
+  expectedRes := 5;
   actualRes := getNextDividerBiggerThan(num, limit);
   write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
-  end;
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else
+    begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
+    end;
 
   // Testfall 3
-  num := 10; limit := 5; expectedRes := 10;
+  num := 10; 
+  limit := 5; 
+  expectedRes := 10;
   actualRes := getNextDividerBiggerThan(num, limit);
   write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 4
-  num := 10; limit := 10; expectedRes := 0;
+  num := 10; 
+  limit := 10; 
+  expectedRes := 0;
   actualRes := getNextDividerBiggerThan(num, limit);
   write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
-  end;
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+    begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
+    end;
 
   // Testfall 5
-  num := 1; limit := 0; expectedRes := 1;
+  num := 1; 
+  limit := 0; 
+  expectedRes := 1;
   actualRes := getNextDividerBiggerThan(num, limit);
   write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+    begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
+    end;
   end;
-end;
 
 // Testet die Funktion isPrime mit verschiedenen Testfällen
 // @param
@@ -225,53 +336,99 @@ begin
   testsFailed := 0;
 
   // Testfall 1
-  testNum := 2; expectedRes := true;
+  testNum := 2; 
+  expectedRes := true;
   actualRes := isPrime(testNum);
   write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
-  end;
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+    begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
+    end;
 
   // Testfall 2
   testNum := 0; expectedRes := false;
   actualRes := isPrime(testNum);
   write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
-  end;
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else
+    begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
+    end;
 
   // Testfall 3
   testNum := 17; expectedRes := true;
   actualRes := isPrime(testNum);
   write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 4
   testNum := 18; expectedRes := false;
   actualRes := isPrime(testNum);
   write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 5
   testNum := 1; expectedRes := false;
   actualRes := isPrime(testNum);
   write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 end;
 
@@ -292,11 +449,17 @@ begin
   actualRes := isPerfectNumber(testNum);
   write('isPerfectNumber(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
   if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
   end 
   else 
   begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 2
@@ -309,7 +472,10 @@ begin
   end 
   else 
   begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 3
@@ -318,11 +484,17 @@ begin
   write('isPerfectNumber(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
   if actualRes = expectedRes then
   begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
   end 
   else 
   begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 4
@@ -331,21 +503,36 @@ begin
   write('isPerfectNumber(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
   if actualRes = expectedRes then
   begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
   end 
   else 
   begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 
   // Testfall 5
   testNum := 0; expectedRes := false;
   actualRes := isPerfectNumber(testNum);
   write('isPerfectNumber(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
-  if actualRes = expectedRes then begin
-    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
-  end else begin
-    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); 
+    writeln('OK'); 
+    TextColor(White); 
+    inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); 
+    writeln('FEHLER'); 
+    TextColor(White); 
+    inc(testsFailed);
   end;
 end;
 
@@ -356,22 +543,26 @@ begin
   sumOK := 0; sumFail := 0;
   writeln('Teste isDivider:');
   testIsDivider(ok, fail);
-  sumOK := sumOK + ok; sumFail := sumFail + fail;
+  sumOK := sumOK + ok; 
+  sumFail := sumFail + fail;
   writeln;
 
   writeln('Teste getNextDividerBiggerThan:');
   testGetNextDividerBiggerThan(ok, fail);
-  sumOK := sumOK + ok; sumFail := sumFail + fail;
+  sumOK := sumOK + ok; 
+  sumFail := sumFail + fail;
   writeln;
 
   writeln('Teste isPrime:');
   testIsPrime(ok, fail);
-  sumOK := sumOK + ok; sumFail := sumFail + fail;
+  sumOK := sumOK + ok; 
+  sumFail := sumFail + fail;
   writeln;
 
   writeln('Teste isPerfectNumber:');
   testIsPerfectNumber(ok, fail);
-  sumOK := sumOK + ok; sumFail := sumFail + fail;
+  sumOK := sumOK + ok; 
+  sumFail := sumFail + fail;
   writeln;
 
   writeln('Tests ok: ', sumOK, ', Tests fehlgeschlagen: ', sumFail);
