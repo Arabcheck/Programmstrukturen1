@@ -302,9 +302,9 @@ begin
     end;
 
   // Testfall 5
-  num := 1; 
+  num := 0; 
   limit := 0; 
-  expectedRes := 1;
+  expectedRes := 0;
   actualRes := getNextDividerBiggerThan(num, limit);
   write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
   if actualRes = expectedRes then 
