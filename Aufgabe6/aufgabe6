@@ -1,10 +1,9 @@
 // Akiel Leabi und Luka Pervan
-// Vier Mathematische Funktonen und vier Prozeduren zum testen der Funktionen
+// Vier Mathematische Funktonen und vier Prozeduren zum Testen der Funktionen
 program aufgabe6;
 {Apptype console}
 {$R+,Q+,X-}
 uses
- //CRT zu Windows aendern und jeweilige Befehle zu den Delphi Befehlen verändern
   SysUtils, Math, crt;
 
 // Überprüft, ob eine Zahl durch einen bestimmten Teiler teilbar ist.
@@ -51,8 +50,7 @@ end;
 function isPrime(num: word): boolean;
 var
   i: integer;
-  primzahl: boolean; // break umgehen
-
+  primzahl: boolean;
 begin
   if num < 2 then
     isPrime := false // ist keine Primzahl
@@ -61,14 +59,10 @@ begin
     primzahl := true;
     for i := 2 to trunc(sqrt(num)) do
       if num mod i = 0 then
-      begin
         primzahl := false;
-      end;
     isPrime := primzahl; 
   end;
-    i := i + 1; 
 end;
-
 
 // Überprüft, ob eine Zahl eine vollkommene Zahl ist.
 // Eine vollkommene Zahl ist gleich der Summe ihrer echten Teiler.
@@ -84,108 +78,301 @@ begin
   sum := 0;
   if num > 0 then
   begin
-  for i := 1 to num - 1 do
-    if num mod i = 0 then
-      sum := sum + i;
-  isPerfectNumber := (sum = num);
-end
-else
-begin
-isperfectnumber := false; // ist keine vollkommene Zahl
-end;
+    for i := 1 to num - 1 do
+      if num mod i = 0 then
+        sum := sum + i;
+    isPerfectNumber := (sum = num);
+  end
+  else
+    isPerfectNumber := false; // ist keine vollkommene Zahl
 end;
 
-//     // Procedure
-
-
-  procedure testIsDivider(var testsOK, testsFailed : byte);
-  begin
-
-  end;
-    
-
-
-
-//     procedure testGetNextDividerBiggerThan(var testsOK, testsFailed : byte);
-
-
-
-//     procedure testIsPrime(var testsOK, testsFailed : byte);
-
-
-
-//     procedure testIsPerfectNumber(var testsOK, testsFailed : byte);
-
-
-
-
-
-
-
-
-
-// Tests
+// Testet die Funktion isDivider mit verschiedenen Testfällen
+// @param
+//   testsOK - gibt die Anzahl der bestandenen Tests zurück (@out)
+//   testsFailed - gibt die Anzahl der fehlgeschlagenen Tests zurück (@out)
+procedure testIsDivider(var testsOK, testsFailed: byte);
 var
-    testNum: byte;
-    expectedRes : boolean;
-    Menue : byte;
-
-//begin
-//   // Test 1: 10 durch 2 (sollte true sein)
-//   if isDivider(10, 2) then
-//     writeln('Test 1 bestanden')
-//   else
-//     writeln('Test 1 fehlgeschlagen');
-
-//   // Test 2: 10 durch 3 (sollte false sein)
-//   if not isDivider(10, 3) then
-//     writeln('Test 2 bestanden')
-//   else
-//     writeln('Test 2 fehlgeschlagen');
-
-//   // Test 3: 0 durch 5 (sollte true sein, da 0 durch alles teilbar ist)
-//   if isDivider(0, 5) then
-//     writeln('Test 3 bestanden')
-//   else
-//     writeln('Test 3 fehlgeschlagen');
-
-//   // Test 4: 10 durch 0 (sollte false sein, Division durch 0)
-//   if not isDivider(10, 0) then
-//     writeln('Test 4 bestanden')
-//   else
-//     writeln('Test 4 fehlgeschlagen');
-// end.
-
-
-
+  testNum, testDivider: word;
+  expectedRes, actualRes: boolean;
 begin
-if isperfectnumber(2) then
-  writeln('Test 1 bestanden')
-else
-  writeln('Test 1 fehlgeschlagen');
-if isperfectnumber(6) then
-  writeln('Test 2 bestanden')
-else
-  writeln('Test 2 fehlgeschlagen');
-if isperfectnumber(8234) then
-  writeln('Test 3 bestanden')
-else
-  writeln('Test 3 fehlgeschlagen');
-if isperfectnumber(496) then
-  writeln('Test 4 bestanden')
-else
-  writeln('Test 4 fehlgeschlagen');
-  if isperfectnumber(0) then
-  writeln('Test 5 bestanden')
-else
-  writeln('Test 5 fehlgeschlagen');
+  testsOK := 0;
+  testsFailed := 0;
 
+  // Testfall 1
+  testNum := 10; testDivider := 2; expectedRes := true;
+  actualRes := isDivider(testNum, testDivider);
+  write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
 
+  // Testfall 2
+  testNum := 10; testDivider := 3; expectedRes := false;
+  actualRes := isDivider(testNum, testDivider);
+  write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
 
+  // Testfall 3
+  testNum := 0; testDivider := 5; expectedRes := true;
+  actualRes := isDivider(testNum, testDivider);
+  write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
 
+  // Testfall 4
+  testNum := 10; testDivider := 0; expectedRes := false;
+  actualRes := isDivider(testNum, testDivider);
+  write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
 
+  // Testfall 5
+  testNum := 1; testDivider := 1; expectedRes := true;
+  actualRes := isDivider(testNum, testDivider);
+  write('isDivider(', testNum, ', ', testDivider, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+end;
 
+// Testet die Funktion getNextDividerBiggerThan mit verschiedenen Testfällen
+// @param
+//   testsOK - gibt die Anzahl der bestandenen Tests zurück (@out)
+//   testsFailed - gibt die Anzahl der fehlgeschlagenen Tests zurück (@out)
+procedure testGetNextDividerBiggerThan(var testsOK, testsFailed: byte);
+var
+  num, limit, expectedRes, actualRes: word;
+begin
+  testsOK := 0;
+  testsFailed := 0;
 
+  // Testfall 1
+  num := 10; limit := 1; expectedRes := 2;
+  actualRes := getNextDividerBiggerThan(num, limit);
+  write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
 
+  // Testfall 2
+  num := 10; limit := 2; expectedRes := 5;
+  actualRes := getNextDividerBiggerThan(num, limit);
+  write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
 
+  // Testfall 3
+  num := 10; limit := 5; expectedRes := 10;
+  actualRes := getNextDividerBiggerThan(num, limit);
+  write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 4
+  num := 10; limit := 10; expectedRes := 0;
+  actualRes := getNextDividerBiggerThan(num, limit);
+  write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 5
+  num := 1; limit := 0; expectedRes := 1;
+  actualRes := getNextDividerBiggerThan(num, limit);
+  write('getNextDividerBiggerThan(', num, ', ', limit, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+end;
+
+// Testet die Funktion isPrime mit verschiedenen Testfällen
+// @param
+//   testsOK - gibt die Anzahl der bestandenen Tests zurück (@out)
+//   testsFailed - gibt die Anzahl der fehlgeschlagenen Tests zurück (@out)
+procedure testIsPrime(var testsOK, testsFailed: byte);
+var
+  testNum: word;
+  expectedRes, actualRes: boolean;
+begin
+  testsOK := 0;
+  testsFailed := 0;
+
+  // Testfall 1
+  testNum := 2; expectedRes := true;
+  actualRes := isPrime(testNum);
+  write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 2
+  testNum := 0; expectedRes := false;
+  actualRes := isPrime(testNum);
+  write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 3
+  testNum := 17; expectedRes := true;
+  actualRes := isPrime(testNum);
+  write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 4
+  testNum := 18; expectedRes := false;
+  actualRes := isPrime(testNum);
+  write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 5
+  testNum := 1; expectedRes := false;
+  actualRes := isPrime(testNum);
+  write('isPrime(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+end;
+
+// Testet die Funktion isPerfectNumber mit verschiedenen Testfällen
+// @param
+//   testsOK - gibt die Anzahl der bestandenen Tests zurück (@out)
+//   testsFailed - gibt die Anzahl der fehlgeschlagenen Tests zurück (@out)
+procedure testIsPerfectNumber(var testsOK, testsFailed: byte);
+var
+  testNum: word;
+  expectedRes, actualRes: boolean;
+begin
+  testsOK := 0;
+  testsFailed := 0;
+
+  // Testfall 1
+  testNum := 6; expectedRes := true;
+  actualRes := isPerfectNumber(testNum);
+  write('isPerfectNumber(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 2
+  testNum := 28; expectedRes := true;
+  actualRes := isPerfectNumber(testNum);
+  write('isPerfectNumber(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then 
+  begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 3
+  testNum := 496; expectedRes := true;
+  actualRes := isPerfectNumber(testNum);
+  write('isPerfectNumber(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then
+  begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 4
+  testNum := 12; expectedRes := false;
+  actualRes := isPerfectNumber(testNum);
+  write('isPerfectNumber(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then
+  begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end 
+  else 
+  begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+
+  // Testfall 5
+  testNum := 0; expectedRes := false;
+  actualRes := isPerfectNumber(testNum);
+  write('isPerfectNumber(', testNum, ') -> erwartet: ', expectedRes, ', bekommen: ', actualRes, ' => ');
+  if actualRes = expectedRes then begin
+    TextColor(LightGreen); writeln('OK'); TextColor(White); inc(testsOK);
+  end else begin
+    TextColor(LightRed); writeln('FEHLER'); TextColor(White); inc(testsFailed);
+  end;
+end;
+
+// Hauptprogramm: Ruft alle Testprozeduren auf und gibt die Gesamtstatistik aus
+var
+  ok, fail, sumOK, sumFail: byte;
+begin
+  sumOK := 0; sumFail := 0;
+  writeln('Teste isDivider:');
+  testIsDivider(ok, fail);
+  sumOK := sumOK + ok; sumFail := sumFail + fail;
+  writeln;
+
+  writeln('Teste getNextDividerBiggerThan:');
+  testGetNextDividerBiggerThan(ok, fail);
+  sumOK := sumOK + ok; sumFail := sumFail + fail;
+  writeln;
+
+  writeln('Teste isPrime:');
+  testIsPrime(ok, fail);
+  sumOK := sumOK + ok; sumFail := sumFail + fail;
+  writeln;
+
+  writeln('Teste isPerfectNumber:');
+  testIsPerfectNumber(ok, fail);
+  sumOK := sumOK + ok; sumFail := sumFail + fail;
+  writeln;
+
+  writeln('Tests ok: ', sumOK, ', Tests fehlgeschlagen: ', sumFail);
 end.
