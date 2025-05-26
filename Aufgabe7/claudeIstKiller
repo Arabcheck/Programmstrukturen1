@@ -1,0 +1,539 @@
+program SokobanLiveInput;
+
+{$R+} // Bereichsüberprüfungen aktivieren
+{$mode objfpc}{$H+} // Free Pascal Object Mode
+
+uses
+  SysUtils, Crt
+  {$IFDEF WINDOWS}
+  , Windows
+  {$ENDIF}
+  {$IFDEF UNIX}
+  , Unix, BaseUnix
+  {$ENDIF};
+
+// Konstanten
+const
+  COLS = 10;
+  ROWS = 12;
+  
+  // Spielfeld-Konstante
+  FIELD_10x12: string = 'KKKKKKKKKKKKKWWWWWKKKWWWEEEWKKKWTSBEEWKKKWWWEBTWKKKWTWWBEWKKKWEWETEWWKKWBEXBBTWKKWEEETEEWKKWWWWWWWWKKKKKKKKKKKKKKKKKKKKK';
+
+// Typen
+type
+  TWidth = 1..COLS;
+  THeight = 1..ROWS;
+  
+  TState = (stBackground, stBox, stBoxOnTarget, stEmpty, stSokoban, stSokobanOnTarget, stTarget, stWall);
+  
+  TDir = (dirNorth, dirEast, dirSouth, dirWest);
+  
+  TField = array[THeight, TWidth] of TState;
+
+// Offset-Arrays für Bewegungsrichtungen
+const
+  OFFSET_COL: array[TDir] of integer = (0, 1, 0, -1);  // Nord, Ost, Süd, West
+  OFFSET_ROW: array[TDir] of integer = (-1, 0, 1, 0);
+
+// Plattformspezifische Input-Funktionen
+{$IFDEF WINDOWS}
+function kbhit: boolean;
+begin
+  kbhit := _kbhit <> 0;
+end;
+
+function getch: char;
+begin
+  getch := Chr(_getch);
+end;
+{$ENDIF}
+
+{$IFDEF UNIX}
+var
+  oldin, newin: termios;
+
+procedure InitKeyboard;
+begin
+  tcgetattr(0, oldin);
+  newin := oldin;
+  newin.c_lflag := newin.c_lflag and (not (ICANON or ECHO));
+  tcsetattr(0, TCSANOW, newin);
+end;
+
+procedure DoneKeyboard;
+begin
+  tcsetattr(0, TCSANOW, oldin);
+end;
+
+function kbhit: boolean;
+var
+  tv: TTimeVal;
+  readfds: TFDSet;
+begin
+  tv.tv_sec := 0;
+  tv.tv_usec := 0;
+  fpFD_ZERO(readfds);
+  fpFD_SET(0, readfds);
+  kbhit := fpSelect(1, @readfds, nil, nil, @tv) > 0;
+end;
+
+function getch: char;
+var
+  c: char;
+begin
+  if fpread(0, c, 1) = 1 then
+    getch := c
+  else
+    getch := #0;
+end;
+{$ENDIF}
+
+// Hilfsprozeduren für Konsole
+procedure clearScreen;
+begin
+  ClrScr;
+end;
+
+procedure setPosition(x, y: integer);
+begin
+  GotoXY(x, y);
+end;
+
+procedure setColor(color: byte);
+begin
+  TextColor(color);
+end;
+
+// Geforderte Funktionen und Prozeduren
+function isValidCoord(col, row: integer): boolean;
+begin
+  isValidCoord := (col >= low(TWidth)) and (col <= high(TWidth)) and
+                  (row >= low(THeight)) and (row <= high(THeight));
+end;
+
+function initField: TField;
+var
+  field: TField;
+  stringIndex: integer;
+  row, col: integer;
+  currentChar: char;
+begin
+  stringIndex := 1;
+  
+  for row := low(THeight) to high(THeight) do
+  begin
+    for col := low(TWidth) to high(TWidth) do
+    begin
+      if stringIndex <= Length(FIELD_10x12) then
+      begin
+        currentChar := FIELD_10x12[stringIndex];
+        case currentChar of
+          'K': field[row, col] := stBackground;
+          'B': field[row, col] := stBox;
+          'X': field[row, col] := stBoxOnTarget;
+          'E': field[row, col] := stEmpty;
+          'S': field[row, col] := stSokoban;
+          'O': field[row, col] := stSokobanOnTarget;
+          'T': field[row, col] := stTarget;
+          'W': field[row, col] := stWall;
+          else field[row, col] := stEmpty;
+        end;
+      end
+      else
+        field[row, col] := stEmpty;
+      
+      inc(stringIndex);
+    end;
+  end;
+  
+  initField := field;
+end;
+
+procedure printField(field: TField);
+var
+  row, col: integer;
+begin
+  setPosition(1, 2); // Ab der 2. Zeile
+  
+  for row := low(THeight) to high(THeight) do
+  begin
+    for col := low(TWidth) to high(TWidth) do
+    begin
+      case field[row, col] of
+        stBackground:
+        begin
+          setColor(Black);
+          write('##');
+        end;
+        stBox:
+        begin
+          setColor(Yellow);
+          write('##');
+        end;
+        stBoxOnTarget:
+        begin
+          setColor(LightGreen);
+          write('##');
+        end;
+        stEmpty:
+        begin
+          setColor(Blue);
+          write('##');
+        end;
+        stSokoban:
+        begin
+          setColor(LightRed);
+          write('##');
+        end;
+        stSokobanOnTarget:
+        begin
+          setColor(LightRed);
+          write('##');
+        end;
+        stTarget:
+        begin
+          setColor(LightGreen);
+          write('o ');
+        end;
+        stWall:
+        begin
+          setColor(LightGray);
+          write('##');
+        end;
+      end;
+    end;
+    writeln;
+  end;
+  setColor(LightGray); // zurück zu Standard
+end;
+
+procedure moveSokoban(var field: TField; dir: TDir; var steps, moves: byte);
+var
+  sokobanRow, sokobanCol: integer;
+  newRow, newCol: integer;
+  boxNewRow, boxNewCol: integer;
+  found: boolean;
+  row, col: integer;
+begin
+  // Sokoban finden
+  found := false;
+  for row := low(THeight) to high(THeight) do
+  begin
+    for col := low(TWidth) to high(TWidth) do
+    begin
+      if (field[row, col] = stSokoban) or (field[row, col] = stSokobanOnTarget) then
+      begin
+        sokobanRow := row;
+        sokobanCol := col;
+        found := true;
+        break;
+      end;
+    end;
+    if found then break;
+  end;
+  
+  if not found then exit;
+  
+  // Neue Position berechnen
+  newRow := sokobanRow + OFFSET_ROW[dir];
+  newCol := sokobanCol + OFFSET_COL[dir];
+  
+  // Prüfen ob neue Position gültig ist
+  if not isValidCoord(newCol, newRow) then exit;
+  
+  // Prüfen was auf der neuen Position ist
+  case field[newRow, newCol] of
+    stEmpty, stTarget:
+    begin
+      // Normale Bewegung ohne Kiste
+      if field[sokobanRow, sokobanCol] = stSokobanOnTarget then
+        field[sokobanRow, sokobanCol] := stTarget
+      else
+        field[sokobanRow, sokobanCol] := stEmpty;
+      
+      if field[newRow, newCol] = stTarget then
+        field[newRow, newCol] := stSokobanOnTarget
+      else
+        field[newRow, newCol] := stSokoban;
+      
+      inc(steps);
+    end;
+    
+    stBox, stBoxOnTarget:
+    begin
+      // Kiste schieben - prüfen wohin
+      boxNewRow := newRow + OFFSET_ROW[dir];
+      boxNewCol := newCol + OFFSET_COL[dir];
+      
+      if not isValidCoord(boxNewCol, boxNewRow) then exit;
+      
+      // Prüfen ob Kiste geschoben werden kann
+      if (field[boxNewRow, boxNewCol] = stEmpty) or (field[boxNewRow, boxNewCol] = stTarget) then
+      begin
+        // Kiste bewegen
+        if field[boxNewRow, boxNewCol] = stTarget then
+          field[boxNewRow, boxNewCol] := stBoxOnTarget
+        else
+          field[boxNewRow, boxNewCol] := stBox;
+        
+        // Mittleres Feld (wo Kiste war) für Sokoban setzen
+        if field[newRow, newCol] = stBoxOnTarget then
+          field[newRow, newCol] := stSokobanOnTarget
+        else
+          field[newRow, newCol] := stSokoban;
+        
+        // Altes Sokoban-Feld zurücksetzen
+        if field[sokobanRow, sokobanCol] = stSokobanOnTarget then
+          field[sokobanRow, sokobanCol] := stTarget
+        else
+          field[sokobanRow, sokobanCol] := stEmpty;
+        
+        inc(steps);
+        inc(moves);
+      end;
+    end;
+  end;
+end;
+
+function isSolvable(field: TField): boolean;
+var
+  row, col: integer;
+  hasWallLeft, hasWallRight, hasWallUp, hasWallDown: boolean;
+  boxCount, wallCount: integer;
+  hasNonTargetBox: boolean;
+begin
+  // Prüfung 1: Kiste in Ecke (zwei benachbarte Mauern) und nicht auf Zielfeld
+  for row := low(THeight) to high(THeight) do
+  begin
+    for col := low(TWidth) to high(TWidth) do
+    begin
+      if field[row, col] = stBox then
+      begin
+        // Prüfen ob benachbarte Mauern existieren
+        hasWallLeft := not isValidCoord(col - 1, row) or 
+                      (isValidCoord(col - 1, row) and (field[row, col - 1] = stWall));
+        hasWallRight := not isValidCoord(col + 1, row) or 
+                       (isValidCoord(col + 1, row) and (field[row, col + 1] = stWall));
+        hasWallUp := not isValidCoord(col, row - 1) or 
+                    (isValidCoord(col, row - 1) and (field[row - 1, col] = stWall));
+        hasWallDown := not isValidCoord(col, row + 1) or 
+                      (isValidCoord(col, row + 1) and (field[row + 1, col] = stWall));
+        
+        // Wenn zwei benachbarte Seiten Mauern haben
+        if (hasWallLeft and hasWallUp) or (hasWallLeft and hasWallDown) or
+           (hasWallRight and hasWallUp) or (hasWallRight and hasWallDown) then
+        begin
+          isSolvable := false;
+          exit;
+        end;
+      end;
+    end;
+  end;
+  
+  // Prüfung 2: 2x2 Bereich nur aus Kisten und Mauern mit mindestens einer Kiste nicht auf Zielfeld
+  for row := low(THeight) to high(THeight) - 1 do
+  begin
+    for col := low(TWidth) to high(TWidth) - 1 do
+    begin
+      boxCount := 0;
+      wallCount := 0;
+      hasNonTargetBox := false;
+      
+      // 2x2 Bereich prüfen
+      if isValidCoord(col, row) and isValidCoord(col + 1, row) and
+         isValidCoord(col, row + 1) and isValidCoord(col + 1, row + 1) then
+      begin
+        // Alle 4 Felder prüfen
+        if (field[row, col] = stBox) or (field[row, col] = stBoxOnTarget) then
+        begin
+          inc(boxCount);
+          if field[row, col] = stBox then hasNonTargetBox := true;
+        end
+        else if field[row, col] = stWall then
+          inc(wallCount);
+        
+        if (field[row, col + 1] = stBox) or (field[row, col + 1] = stBoxOnTarget) then
+        begin
+          inc(boxCount);
+          if field[row, col + 1] = stBox then hasNonTargetBox := true;
+        end
+        else if field[row, col + 1] = stWall then
+          inc(wallCount);
+        
+        if (field[row + 1, col] = stBox) or (field[row + 1, col] = stBoxOnTarget) then
+        begin
+          inc(boxCount);
+          if field[row + 1, col] = stBox then hasNonTargetBox := true;
+        end
+        else if field[row + 1, col] = stWall then
+          inc(wallCount);
+        
+        if (field[row + 1, col + 1] = stBox) or (field[row + 1, col + 1] = stBoxOnTarget) then
+        begin
+          inc(boxCount);
+          if field[row + 1, col + 1] = stBox then hasNonTargetBox := true;
+        end
+        else if field[row + 1, col + 1] = stWall then
+          inc(wallCount);
+        
+        // Wenn 2x2 Bereich nur aus Kisten und Mauern besteht und mindestens eine Kiste nicht auf Zielfeld
+        if (boxCount + wallCount = 4) and hasNonTargetBox then
+        begin
+          isSolvable := false;
+          exit;
+        end;
+      end;
+    end;
+  end;
+  
+  isSolvable := true;
+end;
+
+function isSolved(field: TField): boolean;
+var
+  row, col: integer;
+begin
+  for row := low(THeight) to high(THeight) do
+  begin
+    for col := low(TWidth) to high(TWidth) do
+    begin
+      if field[row, col] = stBox then
+      begin
+        isSolved := false;
+        exit;
+      end;
+    end;
+  end;
+  isSolved := true;
+end;
+
+procedure showInstructions;
+begin
+  setPosition(1, ROWS + 4);
+  setColor(LightGray);
+  writeln('Steuerung: W/A/S/D (Bewegung), R (Neustart), Q (Beenden)');
+  writeln('Live-Input: Keine Enter-Taste nötig!');
+end;
+
+// Hauptprogramm
+var
+  field: TField;
+  steps, moves: byte;
+  gameRunning: boolean;
+  dir: TDir;
+  inputChar: char;
+  needRedraw: boolean;
+
+begin
+  {$IFDEF UNIX}
+  InitKeyboard;
+  {$ENDIF}
+  
+  try
+    // Initialisierung
+    field := initField;
+    steps := 0;
+    moves := 0;
+    gameRunning := true;
+    needRedraw := true;
+    
+    clearScreen;
+    
+    while gameRunning do
+    begin
+      // Bildschirm nur neu zeichnen wenn nötig
+      if needRedraw then
+      begin
+        // Status in erster Zeile anzeigen
+        setPosition(1, 1);
+        setColor(LightGray);
+        write('Schritte: ', steps:3, '  Kistenbewegungen: ', moves:3, '               ');
+        
+        // Spielfeld anzeigen
+        printField(field);
+        
+        // Anweisungen anzeigen
+        showInstructions;
+        
+        // Prüfen ob gewonnen
+        if isSolved(field) then
+        begin
+          setPosition(1, ROWS + 6);
+          setColor(LightGreen);
+          writeln('*** HERZLICHEN GLÜCKWUNSCH! SIE HABEN GEWONNEN! ***');
+          setColor(LightGray);
+          writeln('Drücken Sie Q zum Beenden oder R für Neustart...');
+        end
+        // Prüfen ob noch lösbar
+        else if not isSolvable(field) then
+        begin
+          setPosition(1, ROWS + 6);
+          setColor(LightRed);
+          writeln('*** SPIEL NICHT MEHR LÖSBAR! ***');
+          setColor(LightGray);
+          writeln('Drücken Sie R für Neustart oder Q zum Beenden...');
+        end;
+        
+        needRedraw := false;
+      end;
+      
+      // Auf Tasteneingabe prüfen
+      if kbhit then
+      begin
+        inputChar := getch;
+        inputChar := UpCase(inputChar);
+        
+        case inputChar of
+          'W': 
+          begin
+            moveSokoban(field, dirNorth, steps, moves);
+            needRedraw := true;
+          end;
+          'A': 
+          begin
+            moveSokoban(field, dirWest, steps, moves);
+            needRedraw := true;
+          end;
+          'S': 
+          begin
+            moveSokoban(field, dirSouth, steps, moves);
+            needRedraw := true;
+          end;
+          'D': 
+          begin
+            moveSokoban(field, dirEast, steps, moves);
+            needRedraw := true;
+          end;
+          'R':
+          begin
+            // Neustart
+            field := initField;
+            steps := 0;
+            moves := 0;
+            clearScreen;
+            needRedraw := true;
+          end;
+          'Q', #27: // Q oder ESC
+          begin
+            gameRunning := false;
+          end;
+        end;
+      end
+      else
+      begin
+        // Kurz warten um CPU-Last zu reduzieren
+        Sleep(50);
+      end;
+    end;
+    
+    setColor(LightGray);
+    clearScreen;
+    writeln('Auf Wiedersehen!');
+    
+  finally
+    {$IFDEF UNIX}
+    DoneKeyboard;
+    {$ENDIF}
+  end;
+end.
