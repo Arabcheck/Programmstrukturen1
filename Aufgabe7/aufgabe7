@@ -1,1 +1,113 @@
 
+program Aufgabe7;
+{Apptype console}
+{$R+,Q+,X-}
+
+uses
+  SysUtils, Math, Crt;
+
+const 
+  COLS = 10;
+  ROWS = 12;
+  OFFSET_COL : array[0..3] of integer = (0, 1, 0, -1); // up, right, down, left
+  OFFSET_ROW : array[0..3] of integer = (-1, 0, 1, 0);
+
+type
+  State = (StateEmpty, StateWall, StateBox, StateTarget, StateSokoban, StateBoxOnTarget,StateBackground);
+  TWidth = 1..COLS;
+  THeight = 1..ROWS;
+  TField = array[TWidth, THeight] of State;
+  TDir = (up, right, down, left);
+
+var
+  Spielfeld : String;
+
+function IsValidCord(col, row: Integer): Boolean;
+begin
+end;
+
+function InitField : TField;
+begin
+end;
+
+procedure PrintField(Field: TField);
+var
+  cols, rows: TWidth;
+begin
+    setPosition(1, 2); // Ab der zweiten Zeile ausgeben
+
+    for rows := low(THeight) to high(THeight) do
+    begin
+        for cols := low(TWidth) to high(TWidth) do
+        begin
+            case Field[cols, rows] of
+                StateEmpty:
+                begin
+                TextColor := White;
+                write('░'); // empty 
+                end;
+                StateWall:
+                begin
+                TextColor := LightGrey;
+                write('░'); // Wand
+                end;
+                StateBox:
+                begin
+                TextColor := Yellow;
+                write('░'); // Box
+                end;
+                StateTarget:
+                begin
+                TextColor := LightGreen;
+                write('o'); // Zielfeld 
+                end;
+                StateSokoban:
+                begin
+                TextColor := Red;
+                write('░'); // Spieler aka Sokoban
+                end;
+                StateBoxOnTarget:
+                begin
+                TextColor := LightGreen;
+                write('░'); // Box auf Zielfeld
+                end;
+                StateBackground:
+                begin
+                TextColor := Black;
+                write('░'); // Hintergrund 
+                end;
+
+        end;
+        end;  
+
+
+
+    StateEmpty: Write('▓'); // empty
+    StateWall: Write('▓'); // wall
+    StateBox: Write('▓'); // box
+    StateTarget: Write('o'); // target
+    StateSokoban: Write('▓'); // sokoban
+    StateBoxOnTarget: Write('▓'); // box on target
+
+
+end;
+
+procedure MoveSokoban(var Field: TField; dir : TDir; var steps, moves: byte);
+begin
+end;
+
+procedure SetConsolePosition(x, y: byte);
+begin
+end;
+
+function IsSolvable(field : TField): Boolean;
+begin
+end;
+
+function isSolved(field : TField) : boolean;
+begin
+end;
+
+begin
+  // Hauptprogrammcode hier
+end.
