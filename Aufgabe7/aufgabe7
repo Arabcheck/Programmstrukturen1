@@ -13,7 +13,7 @@ const
   FIELD_10x12 : string = 'KKKKKKKKKKKKKWWWWWKKKWWWEEEWKKKWTSBEEWKKKWWWEBTWKKKWTWWBEWKKKWEWETEWWKKWBEXBBTWKKWEEETEEWKKWWWWWWWWKKKKKKKKKKKKKKKKKKKKK'; 
 
 type
-  State = (StateEmpty, StateWall, StateBox, StateTarget, StateSokoban, StateBoxOnTarget,StateBackground);
+  State = (StateEmpty, StateWall, StateBox, StateTarget, StateSokoban, StateBoxOnTarget,StateBackground, StateSokobanOnTarget);
   TWidth = 1..COLS;
   THeight = 1..ROWS;
   TField = array[TWidth, THeight] of State;
@@ -36,7 +36,29 @@ var
   currentChar: char;
 
 begin
+ stringIndex := 1;
+ for row := low(THeight) to high(THeight) do
+ begin
+  if stringIndex <= Length(FIELD_10x12) then
+    begin
+    currentChar := Field_10x12[stringIndex];
+    case currentChar of
+      'K' : field [row, col] := StateBackground; // Sokoban
+      'W' : field [row, col] := StateWall; // Wall 
+      'B' : field [row, col] := StateBox; // Box
+      'E' : field [row, col] := StateEmpty; // Empty
+      'T' : field [row, col] := StateTarget; // Target
+      'X' : field [row, col] := StateBoxOnTarget; // Box on Target
+      'S' : field [row, col] := StateSokoban; // Sokoban
+      'O' : field [row, col] := StateSokobanOnTarget; // Sokoban on Target
+      else field[row, col] := StateEmpty;
+      end;
+    end
+    else
+    field[row, col] := StateEmpty; // Default to empty if no match
 
+    inc(stringIndex);
+    end;
 
 
 end;
