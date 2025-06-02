@@ -19,8 +19,6 @@ type
   TField = array[TWidth, THeight] of State;
   TDir = (up, right, down, left);
 
-var
-  Spielfeld : String;
 
 function IsValidCord(col, row: Integer): Boolean;
 begin
@@ -59,7 +57,7 @@ begin
 
     inc(stringIndex);
     end;
-
+    InitField := field;
 
 end;
 
@@ -109,25 +107,32 @@ begin
                 TextColor := Black;
                 write('░'); // Hintergrund 
                 end;
+                StateSokobanOnTarget:
+                begin
+                TextColor := DarkGreen;
+                write('░');
+                end;
 
         end;
         end;  
 
 
-
-    StateEmpty: Write('▓'); // empty
-    StateWall: Write('▓'); // wall
-    StateBox: Write('▓'); // box
-    StateTarget: Write('o'); // target
-    StateSokoban: Write('▓'); // sokoban
-    StateBoxOnTarget: Write('▓'); // box on target
-
-
 end;
 
 procedure MoveSokoban(var Field: TField; dir : TDir; var steps, moves: byte);
+var
+ input : string;
+  dir : TDir;
 begin
-  
+   readln(Input);
+  if (input = 'w') or (input = 'W')  then
+    dir := up
+  else if (input = 'd') or (input = 'D')  then
+    dir := right
+  else if (input = 's') or (input = 'S')  then
+    dir := down
+  else if (input = 'a') or (input = 'A')  then
+    dir := left
 
 
 end;
