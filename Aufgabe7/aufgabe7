@@ -120,20 +120,9 @@ begin
 end;
 
 procedure MoveSokoban(var Field: TField; dir : TDir; var steps, moves: byte);
-var
- input : string;
-  dir : TDir;
-begin
-   readln(Input);
-  if (input = 'w') or (input = 'W')  then
-    dir := up
-  else if (input = 'd') or (input = 'D')  then
-    dir := right
-  else if (input = 's') or (input = 'S')  then
-    dir := down
-  else if (input = 'a') or (input = 'A')  then
-    dir := left
 
+begin
+found := false;
 
 end;
 
@@ -141,14 +130,98 @@ procedure SetConsolePosition(x, y: byte);
 begin
 end;
 
-function IsSolvable(field : TField): Boolean;
+function IsSolvable(field: TField): Boolean;
+var
+  col, row: integer;
+  boxCount, targetCount: integer;
+  hasBoxInCorner, hasTargetAccessible: boolean;
+  solvable: boolean;
 begin
+  boxCount := 0;
+  targetCount := 0;
+  hasBoxInCorner := false;
+  hasTargetAccessible := true;
+  solvable := true;
+  
+  // Zähle Boxen und Targets
+  for row := low(THeight) to high(THeight) do
+  begin
+    for col := low(TWidth) to high(TWidth) do
+    begin
+      case field[col, row] of
+        StateBox, StateBoxOnTarget: inc(boxCount);
+        StateTarget, StateBoxOnTarget, StateSokobanOnTarget: inc(targetCount);
+      end;
+    end;
+  end;
+  
+  // Prüfe ob Anzahl Boxen = Anzahl Targets
+  if boxCount <> targetCount then
+    solvable := false;
+  
+  // Prüfe auf Boxen in Ecken (die nicht auf Targets stehen)
+  if solvable then
+  begin
+    for row := low(THeight) to high(THeight) do
+    begin
+      for col := low(TWidth) to high(TWidth) do
+      begin
+        if field[col, row] = StateBox then
+        begin
+          // Prüfe ob Box in Ecke steht
+          if IsValidCord(col-1, row) and IsValidCord(col, row-1) and
+             IsValidCord(col+1, row) and IsValidCord(col, row+1) then
+          begin
+            // Ecke oben-links
+            if (field[col-1, row] = StateWall) and (field[col, row-1] = StateWall) then
+              hasBoxInCorner := true;
+            // Ecke oben-rechts  
+            if (field[col+1, row] = StateWall) and (field[col, row-1] = StateWall) then
+              hasBoxInCorner := true;
+            // Ecke unten-links
+            if (field[col-1, row] = StateWall) and (field[col, row+1] = StateWall) then
+              hasBoxInCorner := true;
+            // Ecke unten-rechts
+            if (field[col+1, row] = StateWall) and (field[col, row+1] = StateWall) then
+              hasBoxInCorner := true;
+          end;
+        end;
+      end;
+    end;
+    
+    if hasBoxInCorner then
+      solvable := false;
+  end;
+  
+  IsSolvable := solvable;
 end;
 
 function isSolved(field : TField) : boolean;
-begin
-end;
+var
 
+  col, row: TWidth;
+  boxCount, targetCount: integer; 
 begin
+  boxCount := 0;
+  targetCount := 0;
+
+  for row := low(THeight) to high(THeight) do
+  begin
+    for col := low(TWidth) to high(TWidth) do
+    begin
+      case Field[col, row] of
+        StateBox, StateBoxOnTarget: inc(boxCount);
+        StateTarget, StateSokobanOnTarget: inc(targetCount);
+      end;
+    end;
+  end;
+
+  isSolved := (boxCount = targetCount) and (targetCount > 0); 
+end;
+var
+ input: char;
+begin
+ if 
+
   // Hauptprogrammcode hier
 end.
