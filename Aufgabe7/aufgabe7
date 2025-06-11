@@ -20,9 +20,9 @@ type
   TDir = (up, right, down, left);
 
 
-function IsValidCord(col, row: Integer): Boolean;
+function IsValidCoord(col, row: Integer): Boolean;
 begin
- isValidCoord := (col >= low(TWidth)) and (col <= high(TWidth)) and
+ IsValidCoord := (col >= low(TWidth)) and (col <= high(TWidth)) and
                   (row >= low(THeight)) and (row <= high(THeight));
 end;
 
@@ -37,110 +37,164 @@ begin
  stringIndex := 1;
  for row := low(THeight) to high(THeight) do
  begin
-  if stringIndex <= Length(FIELD_10x12) then
+   for col := low(TWidth) to high(TWidth) do
+   begin
+    if stringIndex <= Length(FIELD_10x12) then
     begin
-    currentChar := Field_10x12[stringIndex];
-    case currentChar of
-      'K' : field [row, col] := StateBackground; // Sokoban
-      'W' : field [row, col] := StateWall; // Wall 
-      'B' : field [row, col] := StateBox; // Box
-      'E' : field [row, col] := StateEmpty; // Empty
-      'T' : field [row, col] := StateTarget; // Target
-      'X' : field [row, col] := StateBoxOnTarget; // Box on Target
-      'S' : field [row, col] := StateSokoban; // Sokoban
-      'O' : field [row, col] := StateSokobanOnTarget; // Sokoban on Target
-      else field[row, col] := StateEmpty;
+      currentChar := FIELD_10x12[stringIndex];
+      case currentChar of
+        'K' : field[col, row] := StateBackground;
+        'W' : field[col, row] := StateWall; 
+        'B' : field[col, row] := StateBox;
+        'E' : field[col, row] := StateEmpty;
+        'T' : field[col, row] := StateTarget;
+        'X' : field[col, row] := StateBoxOnTarget;
+        'S' : field[col, row] := StateSokoban;
+        'O' : field[col, row] := StateSokobanOnTarget;
+        else field[col, row] := StateEmpty;
       end;
     end
     else
-    field[row, col] := StateEmpty; // Default to empty if no match
+      field[col, row] := StateEmpty;
 
-    inc(stringIndex);
-    end;
-    InitField := field;
-
+    stringIndex := stringIndex + 1;
+   end;
+ end;
+ InitField := field;
 end;
 
 procedure PrintField(Field: TField);
 var
-  cols, rows: TWidth;
+  col, row: integer;
 begin
-    setPosition(1, 2); // Ab der zweiten Zeile ausgeben
+    ClrScr;
+    writeln('Sokoban - Steuerung: WASD, Q=Quit');
+    writeln;
 
-    for rows := low(THeight) to high(THeight) do
+    for row := low(THeight) to high(THeight) do
     begin
-        for cols := low(TWidth) to high(TWidth) do
+        for col := low(TWidth) to high(TWidth) do
         begin
-            case Field[cols, rows] of
-                StateEmpty:
-                begin
-                TextColor := White;
-                write('░'); // empty 
-                end;
-                StateWall:
-                begin
-                TextColor := LightGrey;
-                write('░'); // Wand
-                end;
-                StateBox:
-                begin
-                TextColor := Yellow;
-                write('░'); // Box
-                end;
-                StateTarget:
-                begin
-                TextColor := LightGreen;
-                write('o'); // Zielfeld 
-                end;
-                StateSokoban:
-                begin
-                TextColor := Red;
-                write('░'); // Spieler aka Sokoban
-                end;
-                StateBoxOnTarget:
-                begin
-                TextColor := LightGreen;
-                write('░'); // Box auf Zielfeld
-                end;
-                StateBackground:
-                begin
-                TextColor := Black;
-                write('░'); // Hintergrund 
-                end;
-                StateSokobanOnTarget:
-                begin
-                TextColor := DarkGreen;
-                write('░');
-                end;
-
+            case Field[col, row] of
+                StateEmpty: write('.');
+                StateWall: write('#');
+                StateBox: write('B');
+                StateTarget: write('o');
+                StateSokoban: write('S');
+                StateBoxOnTarget: write('X');
+                StateBackground: write(' ');
+                StateSokobanOnTarget: write('S');
+            end;
         end;
-        end;  
-
-
+        writeln;
+    end;
 end;
 
 procedure MoveSokoban(var Field: TField; dir : TDir; var steps, moves: byte);
-
+var
+  sokoCol, sokoRow: integer;
+  newCol, newRow: integer;
+  nextCol, nextRow: integer;
+  found: boolean;
+  col, row: integer;
+  canMove: boolean;
 begin
-found := false;
-
+  found := false;
+  
+  // Finde Sokoban Position
+  row := low(THeight);
+  while (row <= high(THeight)) and (not found) do
+  begin
+    col := low(TWidth);
+    while (col <= high(TWidth)) and (not found) do
+    begin
+      if (Field[col, row] = StateSokoban) or (Field[col, row] = StateSokobanOnTarget) then
+      begin
+        sokoCol := col;
+        sokoRow := row;
+        found := true;
+      end;
+      col := col + 1;
+    end;
+    row := row + 1;
+  end;
+  
+  if found then
+  begin
+    // Berechne neue Position
+    newCol := sokoCol + OFFSET_COL[ord(dir)];
+    newRow := sokoRow + OFFSET_ROW[ord(dir)];
+    
+    if IsValidCoord(newCol, newRow) then
+    begin
+      canMove := false;
+      
+      case Field[newCol, newRow] of
+        StateEmpty, StateTarget:
+        begin
+          canMove := true;
+        end;
+        
+        StateBox, StateBoxOnTarget:
+        begin
+          nextCol := newCol + OFFSET_COL[ord(dir)];
+          nextRow := newRow + OFFSET_ROW[ord(dir)];
+          
+          if IsValidCoord(nextCol, nextRow) then
+          begin
+            if (Field[nextCol, nextRow] = StateEmpty) or (Field[nextCol, nextRow] = StateTarget) then
+            begin
+              canMove := true;
+              
+              // Box bewegen
+              if Field[nextCol, nextRow] = StateTarget then
+                Field[nextCol, nextRow] := StateBoxOnTarget
+              else
+                Field[nextCol, nextRow] := StateBox;
+                
+              moves := moves + 1;
+            end;
+          end;
+        end;
+      end;
+      
+      if canMove then
+      begin
+        // Alte Sokoban Position leeren
+        if Field[sokoCol, sokoRow] = StateSokobanOnTarget then
+          Field[sokoCol, sokoRow] := StateTarget
+        else
+          Field[sokoCol, sokoRow] := StateEmpty;
+          
+        // Neue Sokoban Position setzen
+        if Field[newCol, newRow] = StateTarget then
+          Field[newCol, newRow] := StateSokobanOnTarget
+        else if Field[newCol, newRow] = StateBoxOnTarget then
+          Field[newCol, newRow] := StateSokobanOnTarget
+        else
+          Field[newCol, newRow] := StateSokoban;
+          
+        steps := steps + 1;
+      end;
+    end;
+  end;
 end;
 
 procedure SetConsolePosition(x, y: byte);
 begin
+  GotoXY(x, y);
 end;
 
 function IsSolvable(field: TField): Boolean;
 var
   col, row: integer;
   boxCount, targetCount: integer;
-  hasBoxInCorner, hasTargetAccessible: boolean;
+  hasBoxInCorner: boolean;
   solvable: boolean;
 begin
   boxCount := 0;
   targetCount := 0;
   hasBoxInCorner := false;
-  hasTargetAccessible := true;
   solvable := true;
   
   // Zähle Boxen und Targets
@@ -149,8 +203,14 @@ begin
     for col := low(TWidth) to high(TWidth) do
     begin
       case field[col, row] of
-        StateBox, StateBoxOnTarget: inc(boxCount);
-        StateTarget, StateBoxOnTarget, StateSokobanOnTarget: inc(targetCount);
+        StateBox: boxCount := boxCount + 1;
+        StateBoxOnTarget: 
+        begin
+          boxCount := boxCount + 1;
+          targetCount := targetCount + 1;
+        end;
+        StateTarget: targetCount := targetCount + 1;
+        StateSokobanOnTarget: targetCount := targetCount + 1;
       end;
     end;
   end;
@@ -169,8 +229,8 @@ begin
         if field[col, row] = StateBox then
         begin
           // Prüfe ob Box in Ecke steht
-          if IsValidCord(col-1, row) and IsValidCord(col, row-1) and
-             IsValidCord(col+1, row) and IsValidCord(col, row+1) then
+          if IsValidCoord(col-1, row) and IsValidCoord(col, row-1) and
+             IsValidCoord(col+1, row) and IsValidCoord(col, row+1) then
           begin
             // Ecke oben-links
             if (field[col-1, row] = StateWall) and (field[col, row-1] = StateWall) then
@@ -198,30 +258,67 @@ end;
 
 function isSolved(field : TField) : boolean;
 var
-
-  col, row: TWidth;
-  boxCount, targetCount: integer; 
+  col, row: integer;
+  boxCount, boxOnTargetCount: integer; 
 begin
   boxCount := 0;
-  targetCount := 0;
+  boxOnTargetCount := 0;
 
   for row := low(THeight) to high(THeight) do
   begin
     for col := low(TWidth) to high(TWidth) do
     begin
       case Field[col, row] of
-        StateBox, StateBoxOnTarget: inc(boxCount);
-        StateTarget, StateSokobanOnTarget: inc(targetCount);
+        StateBox: boxCount := boxCount + 1;
+        StateBoxOnTarget: boxOnTargetCount := boxOnTargetCount + 1;
       end;
     end;
   end;
 
-  isSolved := (boxCount = targetCount) and (targetCount > 0); 
+  isSolved := (boxCount = 0) and (boxOnTargetCount > 0); 
 end;
-var
- input: char;
-begin
- if 
 
-  // Hauptprogrammcode hier
+var
+  field: TField;
+  input: char;
+  steps, moves: byte;
+  gameRunning: boolean;
+
+begin
+  field := InitField;
+  steps := 0;
+  moves := 0;
+  gameRunning := true;
+  
+  while gameRunning do
+  begin
+    PrintField(field);
+    writeln('Schritte: ', steps, ' Züge: ', moves);
+    writeln;
+    
+    if isSolved(field) then
+    begin
+      writeln('Gratulation! Level gelöst!');
+      gameRunning := false;
+    end
+    else if not IsSolvable(field) then
+    begin
+      writeln('Level nicht mehr lösbar!');
+      gameRunning := false;
+    end
+    else
+    begin
+      input := ReadKey;
+      case UpCase(input) of
+        'W': MoveSokoban(field, up, steps, moves);
+        'A': MoveSokoban(field, left, steps, moves);
+        'S': MoveSokoban(field, down, steps, moves);
+        'D': MoveSokoban(field, right, steps, moves);
+        'Q': gameRunning := false;
+      end;
+    end;
+  end; // Ende der while-Schleife
+  
+  writeln('Spiel beendet. Drücke eine Taste...');
+
 end.
