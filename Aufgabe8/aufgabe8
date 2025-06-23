@@ -1,1 +1,347 @@
+program HotelVerwaltung;
 
+const
+  NO_OF_HOTELS = 10;
+
+type
+  TAttribute = (attTeuer, attBerge, attPool, attRuhig, attMeer);
+  TAttributeSet = set of TAttribute;
+  
+  THotel = record
+    Name: string;
+    IsChildFriendly: boolean;
+    Attributes: TAttributeSet;
+  end;
+  
+  THotelArray = array[1..NO_OF_HOTELS] of THotel;
+
+const
+  ATTRIBUTE_NAMES: array[TAttribute] of string = ('teuer', 'Berge', 'Pool', 'ruhig', 'Meer');
+
+{ Funktion zum Einlesen des Hotelnamens }
+function readName: string;
+var
+  input: string;
+  valid: boolean;
+begin
+  valid := false;
+  readName := '';
+  
+  while not valid do
+  begin
+    writeln('Geben Sie die Benennung des Hotels ein (mindestens 5 Zeichen, ''X'' zum Abbruch):');
+    write('> ');
+    readln(input);
+    
+    if (input = 'X') or (input = 'x') then
+    begin
+      readName := 'X';
+      valid := true;
+    end
+    else if length(input) >= 5 then
+    begin
+      readName := input;
+      valid := true;
+    end
+    else
+      writeln('Fehler: Die Benennung muss mindestens 5 Zeichen lang sein!');
+  end;
+end;
+
+{ Funktion zum Einlesen des kinderfreundlich-Status }
+function readIsChildFriendly: string;
+var
+  input: string;
+  i: integer;
+  valid: boolean;
+begin
+  valid := false;
+  readIsChildFriendly := '';
+  
+  while not valid do
+  begin
+    writeln('Ist das Hotel kinderfreundlich? (JA/NEIN, ''X'' zum Abbruch):');
+    write('> ');
+    readln(input);
+    
+    if (input = 'X') or (input = 'x') then
+    begin
+      readIsChildFriendly := 'X';
+      valid := true;
+    end
+    else
+    begin
+      { Manuell in Großbuchstaben umwandeln }
+      for i := 1 to length(input) do
+      begin
+        if (input[i] >= 'a') and (input[i] <= 'z') then
+          input[i] := chr(ord(input[i]) - 32);
+      end;
+      
+      if (input = 'JA') or (input = 'NEIN') then
+      begin
+        readIsChildFriendly := input;
+        valid := true;
+      end
+      else
+        writeln('Fehler: Bitte geben Sie ''JA'' oder ''NEIN'' ein!');
+    end;
+  end;
+end;
+
+{ Funktion zum Einlesen der Attribute }
+function readAttributes: TAttributeSet;
+var
+  attributes: TAttributeSet;
+  input: string;
+  operation: char;
+  attributeName: string;
+  attr: TAttribute;
+  found: boolean;
+  i: integer;
+  finished: boolean;
+begin
+  attributes := [];
+  finished := false;
+  
+  writeln('Geben Sie die Attribute ein:');
+  writeln('- Zum Hinzufuegen: +Attributname (z.B. +teuer)');
+  writeln('- Zum Entfernen: -Attributname (z.B. -teuer)');
+  writeln('- Verfuegbare Attribute: teuer, Berge, Pool, ruhig, Meer');
+  writeln('- Eingabe beenden mit ''X''');
+  
+  while not finished do
+  begin
+    write('Attribut: ');
+    readln(input);
+    
+    if (input = 'X') or (input = 'x') then
+      finished := true
+    else if length(input) < 2 then
+      writeln('Fehler: Ungueltige Eingabe!')
+    else
+    begin
+      operation := input[1];
+      { Attributname extrahieren }
+      attributeName := '';
+      for i := 2 to length(input) do
+        attributeName := attributeName + input[i];
+      
+      if (operation <> '+') and (operation <> '-') then
+        writeln('Fehler: Verwenden Sie + oder - vor dem Attributnamen.')
+      else
+      begin
+        found := false;
+        for attr := low(TAttribute) to high(TAttribute) do
+        begin
+          if ATTRIBUTE_NAMES[attr] = attributeName then
+          begin
+            found := true;
+            if operation = '+' then
+            begin
+              attributes := attributes + [attr];
+              writeln('Attribut "', attributeName, '" hinzugefuegt.');
+            end
+            else
+            begin
+              if attr in attributes then
+              begin
+                attributes := attributes - [attr];
+                writeln('Attribut "', attributeName, '" entfernt.');
+              end
+              else
+                writeln('Attribut "', attributeName, '" war nicht vorhanden.');
+            end;
+          end;
+        end;
+        
+        if not found then
+          writeln('Fehler: Unbekanntes Attribut "', attributeName, '"');
+      end;
+    end;
+  end;
+  
+  readAttributes := attributes;
+end;
+
+{ Funktion zum Steuern des gesamten Einlesens }
+function readAll(var hotels: THotelArray): byte;
+var
+  count: byte;
+  name, childFriendly: string;
+  attributes: TAttributeSet;
+  continueInput: boolean;
+begin
+  count := 0;
+  continueInput := true;
+  
+  writeln('=== Hoteleingabe gestartet ===');
+  writeln('Maximale Anzahl Hotels: ', NO_OF_HOTELS);
+  writeln;
+  
+  while (count < NO_OF_HOTELS) and continueInput do
+  begin
+    writeln('--- Eingabe Hotel ', count + 1, ' von ', NO_OF_HOTELS, ' ---');
+    
+    name := readName;
+    if name = 'X' then
+    begin
+      writeln('Eingabe abgebrochen.');
+      continueInput := false;
+    end
+    else
+    begin
+      childFriendly := readIsChildFriendly;
+      if childFriendly = 'X' then
+      begin
+        writeln('Eingabe abgebrochen.');
+        continueInput := false;
+      end
+      else
+      begin
+        attributes := readAttributes;
+        
+        count := count + 1;
+        hotels[count].Name := name;
+        hotels[count].IsChildFriendly := (childFriendly = 'JA');
+        hotels[count].Attributes := attributes;
+        
+        writeln('Hotel erfolgreich gespeichert!');
+        writeln;
+      end;
+    end;
+  end;
+  
+  readAll := count;
+end;
+
+{ Funktion zur Umwandlung einer Attributmenge in einen String }
+function attributeSetToString(attributes: TAttributeSet): string;
+var
+  resultString: string;
+  attr: TAttribute;
+  first: boolean;
+begin
+  resultString := '';
+  first := true;
+  
+  for attr := low(TAttribute) to high(TAttribute) do
+  begin
+    if attr in attributes then
+    begin
+      if not first then
+        resultString := resultString + ', ';
+      resultString := resultString + ATTRIBUTE_NAMES[attr];
+      first := false;
+    end;
+  end;
+  
+  attributeSetToString := resultString;
+end;
+
+{ Prozedur zur Ausgabe eines Hotels }
+procedure printHotel(const hotel: THotel);
+var
+  childFriendlyStr: string;
+begin
+  if hotel.IsChildFriendly then
+    childFriendlyStr := 'TRUE'
+  else
+    childFriendlyStr := 'FALSE';
+    
+  writeln('Benennung: ', hotel.Name);
+  writeln('Kinderfreundlich: ', childFriendlyStr);
+  writeln('Attribute: ', attributeSetToString(hotel.Attributes));
+end;
+
+{ Prozedur zur Ausgabe aller Hotels }
+procedure printAllHotels(const hotels: THotelArray; count: byte);
+var
+  i: byte;
+begin
+  writeln('=== UEBERSICHT ALLER HOTELS ===');
+  for i := 1 to count do
+  begin
+    writeln;
+    writeln(i, '. EINGEGEBENES HOTEL:');
+    printHotel(hotels[i]);
+  end;
+end;
+
+{ Funktion zur Berechnung der nicht verwendeten Attribute }
+function calcUnusedAttributes(const hotels: THotelArray; count: byte): TAttributeSet;
+var
+  allAttributes, usedAttributes: TAttributeSet;
+  i: byte;
+  attr: TAttribute;
+begin
+  { Alle moeglichen Attribute sammeln }
+  allAttributes := [];
+  for attr := low(TAttribute) to high(TAttribute) do
+    allAttributes := allAttributes + [attr];
+  
+  { Verwendete Attribute sammeln }
+  usedAttributes := [];
+  for i := 1 to count do
+    usedAttributes := usedAttributes + hotels[i].Attributes;
+  
+  { Differenzmenge berechnen }
+  calcUnusedAttributes := allAttributes - usedAttributes;
+end;
+
+{ Funktion zur Berechnung der mehrfach verwendeten Attribute }
+function calcReusedAttributes(const hotels: THotelArray; count: byte): TAttributeSet;
+var
+  reusedAttributes, intersection: TAttributeSet;
+  i, j: byte;
+begin
+  reusedAttributes := [];
+  
+  { Alle moeglichen Paare von Hotels vergleichen }
+  for i := 1 to count do
+  begin
+    for j := i + 1 to count do
+    begin
+      { Schnittmenge der Attribute berechnen }
+      intersection := hotels[i].Attributes * hotels[j].Attributes;
+      { Zur Menge der mehrfach verwendeten Attribute hinzufuegen }
+      reusedAttributes := reusedAttributes + intersection;
+    end;
+  end;
+  
+  calcReusedAttributes := reusedAttributes;
+end;
+
+{ Hauptprogramm }
+var
+  hotels: THotelArray;
+  hotelCount: byte;
+  unusedAttributes, reusedAttributes: TAttributeSet;
+
+begin
+  writeln('========================================');
+  writeln('         HOTELVERWALTUNG V1.0          ');
+  writeln('========================================');
+  writeln;
+  
+  hotelCount := readAll(hotels);
+  
+  if hotelCount = 0 then
+    writeln('Es wurden keine Hotels eingegeben!')
+  else
+  begin
+    printAllHotels(hotels, hotelCount);
+    
+    writeln;
+    writeln('=== AUSWERTUNG ===');
+    unusedAttributes := calcUnusedAttributes(hotels, hotelCount);
+    writeln('Nicht verwendete Attribute: ', attributeSetToString(unusedAttributes));
+    
+    reusedAttributes := calcReusedAttributes(hotels, hotelCount);
+    writeln('Mehrfach verwendete Attribute: ', attributeSetToString(reusedAttributes));
+  end;
+  
+  writeln;
+  writeln('Programm beendet. Druecken Sie Enter zum Schliessen...');
+  readln;
+end.
