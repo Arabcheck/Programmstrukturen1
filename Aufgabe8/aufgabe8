@@ -1,4 +1,6 @@
-program HotelVerwaltung;
+program aufgabe8;
+// Autoren: Luka Pervan & Akiel Leaibi
+// Programm zur erstellung und verwaltung von Hotels
 
 const
   NO_OF_HOTELS = 5; // Reduziert von 10 auf 5 Hotels
@@ -24,9 +26,6 @@ const
   // Array mit textuellen Bezeichnern für alle Attribute (in derselben Reihenfolge wie TAttribute)
   ATTRIBUTE_NAMES: array[TAttribute] of string = ('teuer', 'Berge', 'Pool', 'ruhig', 'Meer');
 
-{ ============================================================================
-  EINGABE-FUNKTIONEN
-  ============================================================================ }
 
 { Funktion zum Einlesen des Hotelnamens
   Rückgabe: Gültiger Hotelname (min. 5 Zeichen) oder 'X' bei Abbruch }
@@ -225,9 +224,6 @@ begin
   readAttributes := attributes;
 end;
 
-{ ============================================================================
-  HAUPTEINGABE-STEUERUNG
-  ============================================================================ }
 
 { Funktion zum Steuern des gesamten Einleseprozesses
   Parameter: hotels - Referenz auf das Hotel-Array
@@ -287,9 +283,6 @@ begin
   readAll := count;
 end;
 
-{ ============================================================================
-  AUSGABE-FUNKTIONEN
-  ============================================================================ }
 
 { Funktion zur Umwandlung einer Attributmenge in einen lesbaren String
   Parameter: attributes - Menge der Attribute
@@ -355,9 +348,6 @@ begin
   end;
 end;
 
-{ ============================================================================
-  MENGENOPERATIONEN
-  ============================================================================ }
 
 { Funktion zur Berechnung der nicht verwendeten Attribute
   Parameter: hotels - Array mit allen Hotels
@@ -410,9 +400,7 @@ begin
   calcReusedAttributes := reusedAttributes;
 end;
 
-{ ============================================================================
-  HAUPTPROGRAMM
-  ============================================================================ }
+// Hauptprogramm
 var
   hotels: THotelArray;           // Array für alle Hotels
   hotelCount: byte;              // Anzahl der eingegebenen Hotels
@@ -421,10 +409,7 @@ var
 
 begin
   // Programm-Header
-  writeln('========================================');
-  writeln('         HOTELVERWALTUNG V2.0          ');
-  writeln('========================================');
-  writeln;
+writeln('Hotelverwaltung')
   
   // Hotels einlesen
   hotelCount := readAll(hotels);
