@@ -1,24 +1,35 @@
 program HotelVerwaltung;
 
 const
-  NO_OF_HOTELS = 10;
+  NO_OF_HOTELS = 5; // Reduziert von 10 auf 5 Hotels
 
 type
+  // Aufzählungstyp für alle verfügbaren Hotel-Attribute
   TAttribute = (attTeuer, attBerge, attPool, attRuhig, attMeer);
+  
+  // Menge von Attributen
   TAttributeSet = set of TAttribute;
   
+  // Record-Definition für ein Hotel
   THotel = record
     Name: string;
     IsChildFriendly: boolean;
     Attributes: TAttributeSet;
   end;
   
+  // Array-Typ für die Speicherung aller Hotels
   THotelArray = array[1..NO_OF_HOTELS] of THotel;
 
 const
+  // Array mit textuellen Bezeichnern für alle Attribute (in derselben Reihenfolge wie TAttribute)
   ATTRIBUTE_NAMES: array[TAttribute] of string = ('teuer', 'Berge', 'Pool', 'ruhig', 'Meer');
 
-{ Funktion zum Einlesen des Hotelnamens }
+{ ============================================================================
+  EINGABE-FUNKTIONEN
+  ============================================================================ }
+
+{ Funktion zum Einlesen des Hotelnamens
+  Rückgabe: Gültiger Hotelname (min. 5 Zeichen) oder 'X' bei Abbruch }
 function readName: string;
 var
   input: string;
@@ -33,11 +44,13 @@ begin
     write('> ');
     readln(input);
     
+    // Prüfung auf Abbruch
     if (input = 'X') or (input = 'x') then
     begin
       readName := 'X';
       valid := true;
     end
+    // Prüfung auf Mindestlänge
     else if length(input) >= 5 then
     begin
       readName := input;
@@ -48,11 +61,29 @@ begin
   end;
 end;
 
-{ Funktion zum Einlesen des kinderfreundlich-Status }
+{ Hilfsfunktion zur manuellen Umwandlung in Großbuchstaben
+  Parameter: input - zu konvertierender String
+  Rückgabe: String in Großbuchstaben }
+function toUpperCase(input: string): string;
+var
+  i: integer;
+  result: string;
+begin
+  result := input;
+  for i := 1 to length(result) do
+  begin
+    if (result[i] >= 'a') and (result[i] <= 'z') then
+      result[i] := chr(ord(result[i]) - 32);
+  end;
+  toUpperCase := result;
+end;
+
+{ Funktion zum Einlesen des kinderfreundlich-Status
+  Rückgabe: 'JA', 'NEIN' oder 'X' bei Abbruch }
 function readIsChildFriendly: string;
 var
   input: string;
-  i: integer;
+  upperInput: string;
   valid: boolean;
 begin
   valid := false;
@@ -64,6 +95,7 @@ begin
     write('> ');
     readln(input);
     
+    // Prüfung auf Abbruch
     if (input = 'X') or (input = 'x') then
     begin
       readIsChildFriendly := 'X';
@@ -71,16 +103,12 @@ begin
     end
     else
     begin
-      { Manuell in Großbuchstaben umwandeln }
-      for i := 1 to length(input) do
-      begin
-        if (input[i] >= 'a') and (input[i] <= 'z') then
-          input[i] := chr(ord(input[i]) - 32);
-      end;
+      // In Großbuchstaben umwandeln für Vergleich
+      upperInput := toUpperCase(input);
       
-      if (input = 'JA') or (input = 'NEIN') then
+      if (upperInput = 'JA') or (upperInput = 'NEIN') then
       begin
-        readIsChildFriendly := input;
+        readIsChildFriendly := upperInput;
         valid := true;
       end
       else
@@ -89,73 +117,106 @@ begin
   end;
 end;
 
-{ Funktion zum Einlesen der Attribute }
+{ Hilfsfunktion zum Finden eines Attributs anhand des Namens
+  Parameter: attributeName - Name des gesuchten Attributs
+             foundAttr - Referenz für das gefundene Attribut
+  Rückgabe: true wenn Attribut gefunden, false sonst }
+function findAttribute(attributeName: string; var foundAttr: TAttribute): boolean;
+var
+  attr: TAttribute;
+begin
+  findAttribute := false;
+  
+  // Durchlaufe alle möglichen Attribute
+  for attr := low(TAttribute) to high(TAttribute) do
+  begin
+    // Vergleiche mit dem Namen aus dem konstanten Array
+    if ATTRIBUTE_NAMES[attr] = attributeName then
+    begin
+      foundAttr := attr;
+      findAttribute := true;
+      exit; // Attribut gefunden, Funktion verlassen
+    end;
+  end;
+end;
+
+{ Funktion zum Einlesen der Hotel-Attribute
+  Rückgabe: Menge der gewählten Attribute }
 function readAttributes: TAttributeSet;
 var
   attributes: TAttributeSet;
   input: string;
   operation: char;
   attributeName: string;
-  attr: TAttribute;
-  found: boolean;
+  foundAttr: TAttribute;
   i: integer;
   finished: boolean;
 begin
+  // Leere Menge initialisieren
   attributes := [];
   finished := false;
   
+  // Benutzerführung
   writeln('Geben Sie die Attribute ein:');
   writeln('- Zum Hinzufuegen: +Attributname (z.B. +teuer)');
   writeln('- Zum Entfernen: -Attributname (z.B. -teuer)');
   writeln('- Verfuegbare Attribute: teuer, Berge, Pool, ruhig, Meer');
   writeln('- Eingabe beenden mit ''X''');
+  writeln;
   
   while not finished do
   begin
     write('Attribut: ');
     readln(input);
     
+    // Prüfung auf Abbruch
     if (input = 'X') or (input = 'x') then
       finished := true
+    // Mindestlänge prüfen (mindestens +/- und ein Zeichen)
     else if length(input) < 2 then
-      writeln('Fehler: Ungueltige Eingabe!')
+      writeln('Fehler: Ungueltige Eingabe! Verwenden Sie +Attributname oder -Attributname')
     else
     begin
+      // Erstes Zeichen ist die Operation (+/-)
       operation := input[1];
-      { Attributname extrahieren }
+      
+      // Attributname extrahieren (alles ab dem 2. Zeichen)
       attributeName := '';
       for i := 2 to length(input) do
         attributeName := attributeName + input[i];
       
+      // Prüfung auf gültige Operation
       if (operation <> '+') and (operation <> '-') then
-        writeln('Fehler: Verwenden Sie + oder - vor dem Attributnamen.')
+        writeln('Fehler: Verwenden Sie + zum Hinzufuegen oder - zum Entfernen.')
       else
       begin
-        found := false;
-        for attr := low(TAttribute) to high(TAttribute) do
+        // Attribut suchen
+        if findAttribute(attributeName, foundAttr) then
         begin
-          if ATTRIBUTE_NAMES[attr] = attributeName then
+          if operation = '+' then
           begin
-            found := true;
-            if operation = '+' then
-            begin
-              attributes := attributes + [attr];
-              writeln('Attribut "', attributeName, '" hinzugefuegt.');
-            end
+            // Attribut zur Menge hinzufügen
+            if foundAttr in attributes then
+              writeln('Info: Attribut "', attributeName, '" ist bereits vorhanden.')
             else
             begin
-              if attr in attributes then
-              begin
-                attributes := attributes - [attr];
-                writeln('Attribut "', attributeName, '" entfernt.');
-              end
-              else
-                writeln('Attribut "', attributeName, '" war nicht vorhanden.');
+              attributes := attributes + [foundAttr];
+              writeln('Attribut "', attributeName, '" hinzugefuegt.');
             end;
+          end
+          else // operation = '-'
+          begin
+            // Attribut aus Menge entfernen
+            if foundAttr in attributes then
+            begin
+              attributes := attributes - [foundAttr];
+              writeln('Attribut "', attributeName, '" entfernt.');
+            end
+            else
+              writeln('Info: Attribut "', attributeName, '" war nicht vorhanden.');
           end;
-        end;
-        
-        if not found then
+        end
+        else
           writeln('Fehler: Unbekanntes Attribut "', attributeName, '"');
       end;
     end;
@@ -164,7 +225,13 @@ begin
   readAttributes := attributes;
 end;
 
-{ Funktion zum Steuern des gesamten Einlesens }
+{ ============================================================================
+  HAUPTEINGABE-STEUERUNG
+  ============================================================================ }
+
+{ Funktion zum Steuern des gesamten Einleseprozesses
+  Parameter: hotels - Referenz auf das Hotel-Array
+  Rückgabe: Anzahl der erfolgreich eingelesenen Hotels }
 function readAll(var hotels: THotelArray): byte;
 var
   count: byte;
@@ -179,10 +246,12 @@ begin
   writeln('Maximale Anzahl Hotels: ', NO_OF_HOTELS);
   writeln;
   
+  // Schleife für die Eingabe aller Hotels
   while (count < NO_OF_HOTELS) and continueInput do
   begin
     writeln('--- Eingabe Hotel ', count + 1, ' von ', NO_OF_HOTELS, ' ---');
     
+    // 1. Hotelname einlesen
     name := readName;
     if name = 'X' then
     begin
@@ -191,6 +260,7 @@ begin
     end
     else
     begin
+      // 2. Kinderfreundlichkeit einlesen
       childFriendly := readIsChildFriendly;
       if childFriendly = 'X' then
       begin
@@ -199,8 +269,10 @@ begin
       end
       else
       begin
+        // 3. Attribute einlesen
         attributes := readAttributes;
         
+        // Hotel-Daten in Array speichern
         count := count + 1;
         hotels[count].Name := name;
         hotels[count].IsChildFriendly := (childFriendly = 'JA');
@@ -215,7 +287,13 @@ begin
   readAll := count;
 end;
 
-{ Funktion zur Umwandlung einer Attributmenge in einen String }
+{ ============================================================================
+  AUSGABE-FUNKTIONEN
+  ============================================================================ }
+
+{ Funktion zur Umwandlung einer Attributmenge in einen lesbaren String
+  Parameter: attributes - Menge der Attribute
+  Rückgabe: String mit durch Komma getrennten Attributnamen }
 function attributeSetToString(attributes: TAttributeSet): string;
 var
   resultString: string;
@@ -225,10 +303,12 @@ begin
   resultString := '';
   first := true;
   
+  // Alle Attribute durchgehen und vorhandene sammeln
   for attr := low(TAttribute) to high(TAttribute) do
   begin
     if attr in attributes then
     begin
+      // Komma vor allen außer dem ersten Attribut
       if not first then
         resultString := resultString + ', ';
       resultString := resultString + ATTRIBUTE_NAMES[attr];
@@ -239,27 +319,34 @@ begin
   attributeSetToString := resultString;
 end;
 
-{ Prozedur zur Ausgabe eines Hotels }
+{ Prozedur zur formatierten Ausgabe eines einzelnen Hotels
+  Parameter: hotel - das auszugebende Hotel }
 procedure printHotel(const hotel: THotel);
 var
   childFriendlyStr: string;
 begin
+  // Boolean in String umwandeln
   if hotel.IsChildFriendly then
     childFriendlyStr := 'TRUE'
   else
     childFriendlyStr := 'FALSE';
-    
+  
+  // Formatierte Ausgabe
   writeln('Benennung: ', hotel.Name);
   writeln('Kinderfreundlich: ', childFriendlyStr);
   writeln('Attribute: ', attributeSetToString(hotel.Attributes));
 end;
 
-{ Prozedur zur Ausgabe aller Hotels }
+{ Prozedur zur Ausgabe aller eingegebenen Hotels
+  Parameter: hotels - Array mit allen Hotels
+             count - Anzahl der gültigen Hotels im Array }
 procedure printAllHotels(const hotels: THotelArray; count: byte);
 var
   i: byte;
 begin
   writeln('=== UEBERSICHT ALLER HOTELS ===');
+  
+  // Alle Hotels mit Nummerierung ausgeben
   for i := 1 to count do
   begin
     writeln;
@@ -268,28 +355,38 @@ begin
   end;
 end;
 
-{ Funktion zur Berechnung der nicht verwendeten Attribute }
+{ ============================================================================
+  MENGENOPERATIONEN
+  ============================================================================ }
+
+{ Funktion zur Berechnung der nicht verwendeten Attribute
+  Parameter: hotels - Array mit allen Hotels
+             count - Anzahl der gültigen Hotels
+  Rückgabe: Menge der Attribute, die in keinem Hotel verwendet wurden }
 function calcUnusedAttributes(const hotels: THotelArray; count: byte): TAttributeSet;
 var
   allAttributes, usedAttributes: TAttributeSet;
   i: byte;
   attr: TAttribute;
 begin
-  { Alle moeglichen Attribute sammeln }
+  // Menge aller möglichen Attribute erstellen
   allAttributes := [];
   for attr := low(TAttribute) to high(TAttribute) do
     allAttributes := allAttributes + [attr];
   
-  { Verwendete Attribute sammeln }
+  // Menge aller verwendeten Attribute sammeln
   usedAttributes := [];
   for i := 1 to count do
     usedAttributes := usedAttributes + hotels[i].Attributes;
   
-  { Differenzmenge berechnen }
+  // Differenzmenge berechnen: alle Attribute minus verwendete Attribute
   calcUnusedAttributes := allAttributes - usedAttributes;
 end;
 
-{ Funktion zur Berechnung der mehrfach verwendeten Attribute }
+{ Funktion zur Berechnung der mehrfach verwendeten Attribute
+  Parameter: hotels - Array mit allen Hotels
+             count - Anzahl der gültigen Hotels
+  Rückgabe: Menge der Attribute, die in mehreren Hotels vorkommen }
 function calcReusedAttributes(const hotels: THotelArray; count: byte): TAttributeSet;
 var
   reusedAttributes, intersection: TAttributeSet;
@@ -297,14 +394,15 @@ var
 begin
   reusedAttributes := [];
   
-  { Alle moeglichen Paare von Hotels vergleichen }
+  // Alle möglichen Paare von Hotels vergleichen
   for i := 1 to count do
   begin
-    for j := i + 1 to count do
+    for j := i + 1 to count do  // j beginnt bei i+1, um Duplikate zu vermeiden
     begin
-      { Schnittmenge der Attribute berechnen }
+      // Schnittmenge der Attribute beider Hotels berechnen
       intersection := hotels[i].Attributes * hotels[j].Attributes;
-      { Zur Menge der mehrfach verwendeten Attribute hinzufuegen }
+      
+      // Gemeinsame Attribute zur Ergebnismenge hinzufügen
       reusedAttributes := reusedAttributes + intersection;
     end;
   end;
@@ -312,28 +410,37 @@ begin
   calcReusedAttributes := reusedAttributes;
 end;
 
-{ Hauptprogramm }
+{ ============================================================================
+  HAUPTPROGRAMM
+  ============================================================================ }
 var
-  hotels: THotelArray;
-  hotelCount: byte;
-  unusedAttributes, reusedAttributes: TAttributeSet;
+  hotels: THotelArray;           // Array für alle Hotels
+  hotelCount: byte;              // Anzahl der eingegebenen Hotels
+  unusedAttributes: TAttributeSet;   // Nicht verwendete Attribute
+  reusedAttributes: TAttributeSet;   // Mehrfach verwendete Attribute
 
 begin
+  // Programm-Header
   writeln('========================================');
-  writeln('         HOTELVERWALTUNG V1.0          ');
+  writeln('         HOTELVERWALTUNG V2.0          ');
   writeln('========================================');
   writeln;
   
+  // Hotels einlesen
   hotelCount := readAll(hotels);
   
+  // Auswertung und Ausgabe
   if hotelCount = 0 then
     writeln('Es wurden keine Hotels eingegeben!')
   else
   begin
+    // Alle Hotels ausgeben
     printAllHotels(hotels, hotelCount);
     
+    // Mengenoperationen durchführen und Ergebnisse ausgeben
     writeln;
     writeln('=== AUSWERTUNG ===');
+    
     unusedAttributes := calcUnusedAttributes(hotels, hotelCount);
     writeln('Nicht verwendete Attribute: ', attributeSetToString(unusedAttributes));
     
@@ -341,6 +448,7 @@ begin
     writeln('Mehrfach verwendete Attribute: ', attributeSetToString(reusedAttributes));
   end;
   
+  // Programm beenden
   writeln;
   writeln('Programm beendet. Druecken Sie Enter zum Schliessen...');
   readln;
