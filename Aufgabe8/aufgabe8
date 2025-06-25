@@ -1,4 +1,5 @@
 program aufgabe8;
+{$R+,Q+,X-}
 // Autoren: Luka Pervan & Akiel Leaibi
 // Programm zur erstellung und verwaltung von Hotels
 
