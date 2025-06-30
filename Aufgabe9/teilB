@@ -1,0 +1,225 @@
+program TeilB_ListenVerarbeitung;
+
+type
+  // Definition des Listenknotens
+  PListenKnoten = ^TListenKnoten;
+  TListenKnoten = record
+    Info: String;
+    Next: PListenKnoten;
+  end;
+
+// Funktion: Neuen Knoten erstellen und vorne an Liste anhängen
+function VorneAnhaengen(var Liste: PListenKnoten; const Inhalt: String): PListenKnoten;
+var
+  NeuerKnoten: PListenKnoten;
+begin
+  New(NeuerKnoten);
+  NeuerKnoten^.Info := Inhalt;
+  NeuerKnoten^.Next := Liste;
+  Liste := NeuerKnoten;
+  VorneAnhaengen := Liste;
+end;
+
+// Funktion: Anzahl Elemente in Liste zählen
+function ListenLaenge(Liste: PListenKnoten): Integer;
+var
+  Anzahl: Integer;
+  Aktueller: PListenKnoten;
+begin
+  Anzahl := 0;
+  Aktueller := Liste;
+  while Aktueller <> nil do
+  begin
+    Anzahl := Anzahl + 1;
+    Aktueller := Aktueller^.Next;
+  end;
+  ListenLaenge := Anzahl;
+end;
+
+// Prozedur: Liste mit " -> " getrennt ausgeben
+procedure ListeAusgeben(Liste: PListenKnoten);
+var
+  Aktueller: PListenKnoten;
+  ErsteAusgabe: Boolean;
+begin
+  Aktueller := Liste;
+  ErsteAusgabe := True;
+  
+  while Aktueller <> nil do
+  begin
+    if not ErsteAusgabe then
+      Write(' -> ');
+    Write(Aktueller^.Info);
+    ErsteAusgabe := False;
+    Aktueller := Aktueller^.Next;
+  end;
+  WriteLn;
+end;
+
+// Funktion: Komplette Liste kopieren (alle Elemente)
+function ListeKopieren(QuellListe: PListenKnoten): PListenKnoten;
+var
+  ZielListe, NeuerKnoten, LetzterKnoten: PListenKnoten;
+  Aktueller: PListenKnoten;
+begin
+  ZielListe := nil;
+  LetzterKnoten := nil;
+  Aktueller := QuellListe;
+  
+  // Alle Knoten der Reihe nach kopieren
+  while Aktueller <> nil do
+  begin
+    New(NeuerKnoten);
+    NeuerKnoten^.Info := Aktueller^.Info;
+    NeuerKnoten^.Next := nil;
+    
+    if ZielListe = nil then
+      ZielListe := NeuerKnoten
+    else
+      LetzterKnoten^.Next := NeuerKnoten;
+      
+    LetzterKnoten := NeuerKnoten;
+    Aktueller := Aktueller^.Next;
+  end;
+  
+  ListeKopieren := ZielListe;
+end;
+
+// Prozedur: Liste bereinigen (Elemente löschen die Sortierung stören)
+procedure ListeBereinigen(var Liste: PListenKnoten);
+var
+  Aktueller, Vorheriger, ZuLoeschen: PListenKnoten;
+begin
+  if Liste = nil then
+  begin
+    // Liste ist leer, nichts zu tun
+  end
+  else
+  begin
+    Aktueller := Liste^.Next;
+    Vorheriger := Liste;
+    
+    while Aktueller <> nil do
+    begin
+      // Wenn aktueller String kleiner als vorheriger -> löschen
+      if Aktueller^.Info < Vorheriger^.Info then
+      begin
+        ZuLoeschen := Aktueller;
+        Vorheriger^.Next := Aktueller^.Next;
+        Aktueller := Aktueller^.Next;
+        Dispose(ZuLoeschen);
+      end
+      else
+      begin
+        Vorheriger := Aktueller;
+        Aktueller := Aktueller^.Next;
+      end;
+    end;
+  end;
+end;
+
+// Prozedur: Strings aggregieren bis mindestens 5 Zeichen
+procedure ListeAggregieren(var Liste: PListenKnoten);
+var
+  Aktueller, Naechster, ZuLoeschen: PListenKnoten;
+  Zusammengefasst: String;
+begin
+  Aktueller := Liste;
+  
+  while Aktueller <> nil do
+  begin
+    Zusammengefasst := Aktueller^.Info;
+    
+    // Solange weniger als 5 Zeichen und weitere Elemente vorhanden
+    while (Length(Zusammengefasst) < 5) and (Aktueller^.Next <> nil) do
+    begin
+      Naechster := Aktueller^.Next;
+      Zusammengefasst := Zusammengefasst + Naechster^.Info;
+      
+      // Nächsten Knoten entfernen
+      ZuLoeschen := Naechster;
+      Aktueller^.Next := Naechster^.Next;
+      Dispose(ZuLoeschen);
+    end;
+    
+    // Zusammengefassten String speichern
+    Aktueller^.Info := Zusammengefasst;
+    Aktueller := Aktueller^.Next;
+  end;
+end;
+
+// Prozedur: Komplette Liste freigeben
+procedure ListeFreigeben(var Liste: PListenKnoten);
+var
+  Aktueller, Naechster: PListenKnoten;
+begin
+  Aktueller := Liste;
+  while Aktueller <> nil do
+  begin
+    Naechster := Aktueller^.Next;
+    Dispose(Aktueller);
+    Aktueller := Naechster;
+  end;
+  Liste := nil;
+end;
+
+// Hauptprogramm - maximal 60 Zeilen mit Kommentaren
+var
+  Liste, KopierteListe: PListenKnoten;
+  Eingabe: String;
+
+begin
+  WriteLn('=== Teil B: Listenverarbeitung ===');
+  WriteLn('Geben Sie Strings ein (leere Eingabe beendet):');
+  WriteLn;
+  
+  // Listen initialisieren
+  Liste := nil;
+  KopierteListe := nil;
+  
+  // Eingabeschleife bis leerer String
+  repeat
+    Write('String eingeben: ');
+    ReadLn(Eingabe);
+    if Eingabe <> '' then
+      VorneAnhaengen(Liste, Eingabe);
+  until Eingabe = '';
+  
+  WriteLn;
+  
+  // Liste für weitere Operationen kopieren
+  KopierteListe := ListeKopieren(Liste);
+  
+  // Ausgaben gemäß Aufgabenstellung
+  WriteLn('Die Liste hat die Länge ', ListenLaenge(Liste), '.');
+  Write('Strings in der Liste: ');
+  ListeAusgeben(Liste);
+  WriteLn;
+  
+  WriteLn('Die kopierte Liste hat die Länge ', ListenLaenge(KopierteListe), '.');
+  Write('Strings in der Liste: ');
+  ListeAusgeben(KopierteListe);
+  WriteLn;
+  
+  // Originalliste bereinigen
+  ListeBereinigen(Liste);
+  WriteLn('Bereinigte Liste:');
+  Write('Strings in der Liste: ');
+  ListeAusgeben(Liste);
+  WriteLn;
+  
+  // Kopierte Liste aggregieren
+  ListeAggregieren(KopierteListe);
+  WriteLn('Aggregierte Liste:');
+  Write('Strings in der Liste: ');
+  ListeAusgeben(KopierteListe);
+  WriteLn;
+  
+  // Beide Listen freigeben
+  ListeFreigeben(Liste);
+  ListeFreigeben(KopierteListe);
+  
+  WriteLn('Alle Listen wurden freigegeben.');
+  WriteLn('Programm beendet. Drücken Sie Enter...');
+  ReadLn;
+end.
