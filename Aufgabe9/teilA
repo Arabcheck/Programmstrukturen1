@@ -4,10 +4,10 @@
 {$APPTYPE CONSOLE}
 {$R+,Q+,X-}
 
-program ueb09a;
+program aufgabe9;
 
 uses
-   System.SysUtils;
+   SysUtils;
 
 {
 1)  Legt einen Typ fuer einen Zeiger auf eine Bytevariable an.
@@ -68,10 +68,10 @@ end;
 
 procedure mal2_b(var wert: Byte);
 begin
-  wert := wert * 2; // Referenzparameter - verändert Original
+  wert := wert * 2; // Referenzparameter verändert Original
 end;
 
-procedure mal2_c(zeiger: ^Byte);
+procedure mal2_c(zeiger: PByte);
 begin
   zeiger^ := zeiger^ * 2; // Zeiger - verändert Wert an Adresse
 end;
@@ -124,12 +124,12 @@ begin
   // 3) Bytevariable mit Wert 3 belegen und beide Zeiger darauf zeigen lassen
   WriteLn('Schritte 1-4: Grundlagen');
   einByte := 3;
-  zeiger1 := @einByte;
-  zeiger2 := @einByte;
+  zeiger1 := @einByte;      //@ ist der Dereferenzierungsoperator, der die Adresse von einByte liefert
+  zeiger2 := @einByte;      // Beide Zeiger zeigen auf dieselbe Bytevariable
   
   // 4) Ausgabe: Bytevariable, beide dereferenzierten Zeiger, beide Adressen
   WriteLn('Werte vor Änderung: ', einByte, ' ', zeiger1^, ' ', zeiger2^, ' ', 
-          UInt64(zeiger1), ' ', UInt64(zeiger2));
+          UInt64(zeiger1), ' ', UInt64(zeiger2));    // UInt64 wandelt Zeiger in Ganzzahl um für die Ausgabe
   
   // 5) Wert über ersten Zeiger von 3 auf 5 ändern
   zeiger1^ := 5;
@@ -143,7 +143,7 @@ begin
   
   // 9) Drei Zeiger auf die drei Bytewerte im Record zeigen lassen
   WriteLn('Schritte 7-10: Record mit Bytes');
-  byteZeiger1 := @recordMitBytes.Byte1;
+  byteZeiger1 := @recordMitBytes.Byte1;  // @ gibt die Adresse des Feldes zurück
   byteZeiger2 := @recordMitBytes.Byte2;
   byteZeiger3 := @recordMitBytes.Byte3;
   
@@ -157,9 +157,9 @@ begin
   
   // 13) Drei Zeiger auf die drei Integerwerte im Record zeigen lassen
   WriteLn('Schritte 11-14: Record mit Integers');
-  intZeiger1 := @recordMitInts.Int1;
-  intZeiger2 := @recordMitInts.Int2;
-  intZeiger3 := @recordMitInts.Int3;
+  intZeiger1 := @recordMitInts.Int1; // bezieht sich auf Tmitdreiints
+  intZeiger2 := @recordMitInts.Int2; //@ gibt die Adresse des Feldes zurück
+  intZeiger3 := @recordMitInts.Int3; 
   
   // 14) Adressen der drei Integer-Zeiger ausgeben
   WriteLn('Integer-Adressen: ', UInt64(intZeiger1), ' ', UInt64(intZeiger2), ' ', UInt64(intZeiger3));
