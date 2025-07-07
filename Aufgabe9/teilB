@@ -28,15 +28,18 @@ var
 begin
   Anzahl := 0;
   Aktueller := Liste;
-  while Aktueller <> nil do
+//nil ist ein Standardwert fuer einen Zeiger, das bedeutet einfach nur das er auf nichts zeigt oder leersteht
+  while Aktueller <> nil do // solange ein knoten noch vorhanden ist mache;
   begin
     Anzahl := Anzahl + 1;
+// '^' ist das Zeichen für Derefenzierung eines Zeigers, also der Zugriff auf das worauf der Zeiger zeigt
+// das .next kommt einfach von dem record und beschreibt den zugriff auf das nächste feld
     Aktueller := Aktueller^.Next;
   end;
   ListenLaenge := Anzahl;
 end;
 
-// Prozedur: Liste mit " -> " getrennt ausgeben
+//Prozedur: Liste mit " -> " getrennt ausgeben
 procedure ListeAusgeben(Liste: PListenKnoten);
 var
   Aktueller: PListenKnoten;
@@ -49,27 +52,29 @@ begin
   begin
     if not ErsteAusgabe then
       Write(' -> ');
-    Write(Aktueller^.Info);
+    Write(Aktueller^.Info); // ausgabe und zugriff auf das Info feld des records
     ErsteAusgabe := False;
     Aktueller := Aktueller^.Next;
   end;
   WriteLn;
 end;
 
-// Funktion: Komplette Liste kopieren (alle Elemente)
+//Funktion: Komplette Liste kopieren (alle Elemente)
 function ListeKopieren(QuellListe: PListenKnoten): PListenKnoten;
 var
   ZielListe, NeuerKnoten, LetzterKnoten: PListenKnoten;
   Aktueller: PListenKnoten;
 begin
+//Zielliste und Letzterknoten auf nichts setzen
   ZielListe := nil;
   LetzterKnoten := nil;
   Aktueller := QuellListe;
   
-  // Alle Knoten der Reihe nach kopieren
+  //Alle Knoten der Reihe nach kopieren
   while Aktueller <> nil do
   begin
-    New(NeuerKnoten);
+    New(NeuerKnoten); //ist ein dynamischer speicher befehl fuer einen neuen datensatz
+    //kann mit dispose wieder geleert werden, reserviert speicher im heap(platz im ram), muss allerdings manuell gemanaged werden
     NeuerKnoten^.Info := Aktueller^.Info;
     NeuerKnoten^.Next := nil;
     
