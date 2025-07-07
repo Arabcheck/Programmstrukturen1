@@ -20,6 +20,8 @@ begin
   VorneAnhaengen := Liste;
 end;
 
+
+
 // Funktion: Anzahl Elemente in Liste zählen
 function ListenLaenge(Liste: PListenKnoten): Integer;
 var
@@ -96,7 +98,7 @@ procedure ListeBereinigen(var Liste: PListenKnoten);
 var
   Aktueller, Vorheriger, ZuLoeschen: PListenKnoten;
 begin
-  if Liste = nil then
+  if Liste = nil then 
   begin
     // Liste ist leer, nichts zu tun
   end
