@@ -25,6 +25,7 @@ function ListenLaenge(Liste: PListenKnoten): Integer;
 var
   Anzahl: Integer;
   Aktueller: PListenKnoten;
+
 begin
   Anzahl := 0;
   Aktueller := Liste;
@@ -173,7 +174,7 @@ var
   Liste, KopierteListe: PListenKnoten;
   Eingabe: String;
 
-begin
+ begin
   WriteLn('=== Teil B: Listenverarbeitung ===');
   WriteLn('Geben Sie Strings ein (leere Eingabe beendet):');
   WriteLn;
