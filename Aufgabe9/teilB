@@ -13,7 +13,8 @@ function VorneAnhaengen(var Liste: PListenKnoten; const Inhalt: String): PListen
 var
   NeuerKnoten: PListenKnoten;
 begin
-  New(NeuerKnoten);
+  New(NeuerKnoten);//ist ein dynamischer speicher befehl fuer einen neuen datensatz
+    //kann mit dispose wieder geleert werden, reserviert speicher im heap(platz im ram), muss allerdings manuell gemanaged werden
   NeuerKnoten^.Info := Inhalt;
   NeuerKnoten^.Next := Liste;
   Liste := NeuerKnoten;
@@ -89,7 +90,7 @@ begin
     LetzterKnoten := NeuerKnoten;
     Aktueller := Aktueller^.Next;
   end;
-  
+   ListeKopieren := ZielListe; //Rückgabe der kopierten Liste
 
 end;
 
