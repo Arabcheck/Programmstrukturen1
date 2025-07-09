@@ -1,1 +1,531 @@
+program aufgabe10;
 
+{$APPTYPE CONSOLE}
+{$R+,Q+,X-}
+
+uses
+  SysUtils;
+
+type
+  { Record für Veranstaltungen aus der Fachrichtungsdatei }
+  TVeranstaltung = record
+    Nummer: string[5];
+    ECTS: Byte;
+  end;
+
+  { Record für erbrachte Leistungen }
+  TLeistung = record
+    Nummer: string[5];
+    Note: Real;
+  end;
+
+  { Pointer für Listen }
+  PVeranstaltungNode = ^TVeranstaltungNode;
+  TVeranstaltungNode = record
+    Data: TVeranstaltung;
+    Next: PVeranstaltungNode;
+  end;
+
+  PLeistungNode = ^TLeistungNode;
+  TLeistungNode = record
+    Data: TLeistung;
+    Next: PLeistungNode;
+  end;
+
+var
+  SpeicherZaehler: Integer;
+
+{ Fügt eine Veranstaltung zur Liste hinzu }
+procedure FuegeVeranstaltungHinzu(var Liste: PVeranstaltungNode; Veranstaltung: TVeranstaltung);
+var
+  NeuerKnoten: PVeranstaltungNode;
+begin
+  New(NeuerKnoten);
+  Inc(SpeicherZaehler);
+  NeuerKnoten^.Data := Veranstaltung;
+  NeuerKnoten^.Next := Liste;
+  Liste := NeuerKnoten;
+end;
+
+{ Fügt eine Leistung zur Liste hinzu }
+procedure FuegeLeistungHinzu(var Liste: PLeistungNode; Leistung: TLeistung);
+var
+  NeuerKnoten: PLeistungNode;
+begin
+  New(NeuerKnoten);
+  Inc(SpeicherZaehler);
+  NeuerKnoten^.Data := Leistung;
+  NeuerKnoten^.Next := Liste;
+  Liste := NeuerKnoten;
+end;
+
+{ Gibt die Veranstaltungsliste frei }
+procedure GibVeranstaltungslisteWiederFrei(var Liste: PVeranstaltungNode);
+var
+  Aktuell, Naechster: PVeranstaltungNode;
+begin
+  Aktuell := Liste;
+  while Aktuell <> nil do
+  begin
+    Naechster := Aktuell^.Next;
+    Dispose(Aktuell);
+    Dec(SpeicherZaehler);
+    Aktuell := Naechster;
+  end;
+  Liste := nil;
+end;
+
+{ Gibt die Leistungsliste frei }
+procedure GibLeistungslisteWiederFrei(var Liste: PLeistungNode);
+var
+  Aktuell, Naechster: PLeistungNode;
+begin
+  Aktuell := Liste;
+  while Aktuell <> nil do
+  begin
+    Naechster := Aktuell^.Next;
+    Dispose(Aktuell);
+    Dec(SpeicherZaehler);
+    Aktuell := Naechster;
+  end;
+  Liste := nil;
+end;
+
+{ Konvertiert String zu Real mit Fehlerbehandlung }
+function StringZuReal(const S: string; var Erfolg: Boolean): Real;
+var
+  Code: Integer;
+  Wert: Real;
+  TempStr: string;
+  i: Integer;
+begin
+  TempStr := S;
+  
+  { Komma durch Punkt ersetzen }
+  for i := 1 to Length(TempStr) do
+  begin
+    if TempStr[i] = ',' then
+      TempStr[i] := '.';
+  end;
+  
+  Val(TempStr, Wert, Code);
+  if Code = 0 then
+  begin
+    StringZuReal := Wert;
+    Erfolg := True;
+  end
+  else
+  begin
+    StringZuReal := 0;
+    Erfolg := False;
+  end;
+end;
+
+{ Konvertiert Real zu String mit zwei Nachkommastellen }
+function RealZuStringMitZweiStellen(Wert: Real): string;
+var
+  TempStr: string;
+begin
+  Str(Wert:0:2, TempStr);
+  RealZuStringMitZweiStellen := TempStr;
+end;
+
+{ Liest die Studentendatei ein }
+function LeseStudentendatei(const Dateiname: string; var Name, Fachrichtung: string; 
+                           var Leistungen: PLeistungNode): Boolean;
+var
+  Datei: Text;
+  Zeile: string;
+  DoppelpunktPos: Integer;
+  Nummer: string;
+  NotenStr: string;
+  Note: Real;
+  Leistung: TLeistung;
+  Pfad: string;
+  Erfolg: Boolean;
+begin
+  LeseStudentendatei := False;
+  Leistungen := nil;
+  Pfad := ExtractFilePath(ParamStr(0)) + Dateiname;
+  
+  if not FileExists(Pfad) then
+  begin
+    Writeln('Fehler: Datei "', Dateiname, '" existiert nicht.');
+    Exit;
+  end;
+
+  Assign(Datei, Pfad);
+  {$I-}
+  Reset(Datei);
+  {$I+}
+  if IOResult <> 0 then
+  begin
+    Writeln('Fehler beim Öffnen der Datei "', Dateiname, '".');
+    Exit;
+  end;
+  
+  { Name lesen }
+  if Eof(Datei) then
+  begin
+    Writeln('Fehler: Datei ist leer - Name fehlt.');
+    Close(Datei);
+    Exit;
+  end;
+  {$I-}
+  Readln(Datei, Name);
+  {$I+}
+  if IOResult <> 0 then
+  begin
+    Writeln('Fehler beim Lesen des Namens.');
+    Close(Datei);
+    Exit;
+  end;
+  
+  { Fachrichtung lesen }
+  if Eof(Datei) then
+  begin
+    Writeln('Fehler: Fachrichtung fehlt in der Datei.');
+    Close(Datei);
+    Exit;
+  end;
+  {$I-}
+  Readln(Datei, Fachrichtung);
+  {$I+}
+  if IOResult <> 0 then
+  begin
+    Writeln('Fehler beim Lesen der Fachrichtung.');
+    Close(Datei);
+    Exit;
+  end;
+  
+  { Leistungen lesen }
+  while not Eof(Datei) do
+  begin
+    {$I-}
+    Readln(Datei, Zeile);
+    {$I+}
+    if IOResult <> 0 then
+    begin
+      Writeln('Fehler beim Lesen einer Leistungszeile.');
+      Close(Datei);
+      Exit;
+    end;
+    
+    if Zeile = '' then
+      Continue;
+      
+    DoppelpunktPos := Pos(':', Zeile);
+    if DoppelpunktPos = 0 then
+    begin
+      Writeln('Fehler: Ungültiges Format in Zeile "', Zeile, '" - Doppelpunkt fehlt.');
+      Close(Datei);
+      Exit;
+    end;
+    
+    Nummer := Copy(Zeile, 1, DoppelpunktPos - 1);
+    NotenStr := Copy(Zeile, DoppelpunktPos + 1, Length(Zeile));
+    
+    if Length(Nummer) <> 5 then
+    begin
+      Writeln('Fehler: Ungültige Veranstaltungsnummer "', Nummer, '" - muss 5 Zeichen haben.');
+      Close(Datei);
+      Exit;
+    end;
+    
+    if NotenStr = '' then
+    begin
+      Writeln('Fehler: Note fehlt für Veranstaltung "', Nummer, '".');
+      Close(Datei);
+      Exit;
+    end;
+    
+    Note := StringZuReal(NotenStr, Erfolg);
+    if not Erfolg then
+    begin
+      Writeln('Fehler: Ungültige Note "', NotenStr, '" für Veranstaltung "', Nummer, '".');
+      Close(Datei);
+      Exit;
+    end;
+    
+    Leistung.Nummer := Nummer;
+    Leistung.Note := Note;
+    FuegeLeistungHinzu(Leistungen, Leistung);
+  end;
+  
+  Close(Datei);
+  LeseStudentendatei := True;
+end;
+
+{ Liest die Fachrichtungsdatei ein }
+function LeseFachrichtungsdatei(const Fachrichtung: string; var Veranstaltungen: PVeranstaltungNode): Boolean;
+var
+  Datei: file of TVeranstaltung;
+  Veranstaltung: TVeranstaltung;
+  Pfad: string;
+begin
+  LeseFachrichtungsdatei := False;
+  Veranstaltungen := nil;
+  Pfad := ExtractFilePath(ParamStr(0)) + Fachrichtung + '.sp';
+  
+  if not FileExists(Pfad) then
+  begin
+    Writeln('Fehler: Fachrichtungsdatei "', Fachrichtung, '.sp" existiert nicht.');
+    Exit;
+  end;
+
+  Assign(Datei, Pfad);
+  {$I-}
+  Reset(Datei);
+  {$I+}
+  if IOResult <> 0 then
+  begin
+    Writeln('Fehler beim Öffnen der Fachrichtungsdatei "', Fachrichtung, '.sp".');
+    Exit;
+  end;
+  
+  while not Eof(Datei) do
+  begin
+    {$I-}
+    Read(Datei, Veranstaltung);
+    {$I+}
+    if IOResult <> 0 then
+    begin
+      Writeln('Fehler beim Lesen der Fachrichtungsdatei.');
+      Close(Datei);
+      Exit;
+    end;
+    FuegeVeranstaltungHinzu(Veranstaltungen, Veranstaltung);
+  end;
+  
+  Close(Datei);
+  LeseFachrichtungsdatei := True;
+end;
+
+{ Berechnet den Studienfortschritt }
+function BerechneFortschritt(Leistungen: PLeistungNode; Veranstaltungen: PVeranstaltungNode; 
+                            var BestandeneAnzahl: Integer): Real;
+var
+  GesamtAnzahl: Integer;
+  AktuelleLeistung: PLeistungNode;
+  AktuelleVeranstaltung: PVeranstaltungNode;
+  Gefunden: Boolean;
+begin
+  BestandeneAnzahl := 0;
+  GesamtAnzahl := 0;
+  
+  { Gesamtanzahl der Veranstaltungen zählen }
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Inc(GesamtAnzahl);
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
+  end;
+  
+  { Bestandene Leistungen zählen }
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Gefunden := False;
+    AktuelleLeistung := Leistungen;
+    
+    while (AktuelleLeistung <> nil) and not Gefunden do
+    begin
+      if (AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer) and
+         (AktuelleLeistung^.Data.Note <= 4.0) then
+      begin
+        Inc(BestandeneAnzahl);
+        Gefunden := True;
+      end;
+      AktuelleLeistung := AktuelleLeistung^.Next;
+    end;
+    
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
+  end;
+  
+  if GesamtAnzahl > 0 then
+    BerechneFortschritt := (BestandeneAnzahl / GesamtAnzahl) * 100
+  else
+    BerechneFortschritt := 0;
+end;
+
+{ Berechnet die gewichtete Gesamtnote }
+function BerechneGesamtnote(Leistungen: PLeistungNode; Veranstaltungen: PVeranstaltungNode): Real;
+var
+  GesamtPunkte: Real;
+  GesamtECTS: Integer;
+  AktuelleLeistung: PLeistungNode;
+  AktuelleVeranstaltung: PVeranstaltungNode;
+  Gefunden: Boolean;
+begin
+  GesamtPunkte := 0;
+  GesamtECTS := 0;
+  
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Gefunden := False;
+    AktuelleLeistung := Leistungen;
+    
+    while (AktuelleLeistung <> nil) and not Gefunden do
+    begin
+      if AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer then
+      begin
+        GesamtPunkte := GesamtPunkte + (AktuelleLeistung^.Data.Note * AktuelleVeranstaltung^.Data.ECTS);
+        GesamtECTS := GesamtECTS + AktuelleVeranstaltung^.Data.ECTS;
+        Gefunden := True;
+      end;
+      AktuelleLeistung := AktuelleLeistung^.Next;
+    end;
+    
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
+  end;
+  
+  if GesamtECTS > 0 then
+    BerechneGesamtnote := GesamtPunkte / GesamtECTS
+  else
+    BerechneGesamtnote := 0;
+end;
+
+{ Schreibt die Zeugnisdatei }
+function SchreibeZeugnisdatei(const Name: string; Leistungen: PLeistungNode; 
+                             Veranstaltungen: PVeranstaltungNode): Boolean;
+var
+  Datei: Text;
+  Pfad: string;
+  AktuelleVeranstaltung: PVeranstaltungNode;
+  AktuelleLeistung: PLeistungNode;
+  Gefunden: Boolean;
+  Gesamtnote: Real;
+begin
+  SchreibeZeugnisdatei := False;
+  Pfad := ExtractFilePath(ParamStr(0)) + 'Zeugnis_' + Name + '.txt';
+  
+  Assign(Datei, Pfad);
+  {$I-}
+  Rewrite(Datei);
+  {$I+}
+  if IOResult <> 0 then
+  begin
+    Writeln('Fehler beim Erstellen der Zeugnisdatei.');
+    Exit;
+  end;
+  
+  { Name schreiben }
+  {$I-}
+  Writeln(Datei, Name);
+  Writeln(Datei, '');
+  {$I+}
+  if IOResult <> 0 then
+  begin
+    Writeln('Fehler beim Schreiben in die Zeugnisdatei.');
+    Close(Datei);
+    Exit;
+  end;
+  
+  { Alle Veranstaltungen mit Noten schreiben }
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Gefunden := False;
+    AktuelleLeistung := Leistungen;
+    
+    while (AktuelleLeistung <> nil) and not Gefunden do
+    begin
+      if AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer then
+      begin
+        {$I-}
+        Writeln(Datei, AktuelleLeistung^.Data.Nummer, ':', RealZuStringMitZweiStellen(AktuelleLeistung^.Data.Note));
+        {$I+}
+        if IOResult <> 0 then
+        begin
+          Writeln('Fehler beim Schreiben einer Leistung in die Zeugnisdatei.');
+          Close(Datei);
+          Exit;
+        end;
+        Gefunden := True;
+      end;
+      AktuelleLeistung := AktuelleLeistung^.Next;
+    end;
+    
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
+  end;
+  
+  { Gesamtnote berechnen und schreiben }
+  Gesamtnote := BerechneGesamtnote(Leistungen, Veranstaltungen);
+  {$I-}
+  Writeln(Datei, '');
+  Writeln(Datei, 'Gesamtnote: ', RealZuStringMitZweiStellen(Gesamtnote));
+  {$I+}
+  if IOResult <> 0 then
+  begin
+    Writeln('Fehler beim Schreiben der Gesamtnote in die Zeugnisdatei.');
+    Close(Datei);
+    Exit;
+  end;
+  
+  Close(Datei);
+  SchreibeZeugnisdatei := True;
+end;
+
+{ Hauptprogramm }
+var
+  Dateiname: string;
+  Name, Fachrichtung: string;
+  Leistungen: PLeistungNode;
+  Veranstaltungen: PVeranstaltungNode;
+  Fortschritt: Real;
+  BestandeneAnzahl: Integer;
+  
+begin
+  SpeicherZaehler := 0;
+  Leistungen := nil;
+  Veranstaltungen := nil;
+  
+  { Dateiname einlesen }
+  Write('Bitte geben Sie den Dateinamen ein (inkl. Endung): ');
+  Readln(Dateiname);
+  
+  { Studentendatei einlesen }
+  if not LeseStudentendatei(Dateiname, Name, Fachrichtung, Leistungen) then
+  begin
+    GibLeistungslisteWiederFrei(Leistungen);
+    GibVeranstaltungslisteWiederFrei(Veranstaltungen);
+    Writeln('Druecken Sie eine beliebige Taste zum Beenden...');
+    Readln;
+    Exit;
+  end;
+  
+  { Fachrichtungsdatei einlesen }
+  if not LeseFachrichtungsdatei(Fachrichtung, Veranstaltungen) then
+  begin
+    GibLeistungslisteWiederFrei(Leistungen);
+    GibVeranstaltungslisteWiederFrei(Veranstaltungen);
+    Writeln('Druecken Sie eine beliebige Taste zum Beenden...');
+    Readln;
+    Exit;
+  end;
+  
+  { Fortschritt berechnen }
+  Fortschritt := BerechneFortschritt(Leistungen, Veranstaltungen, BestandeneAnzahl);
+  
+  Writeln(RealZuStringMitZweiStellen(Fortschritt), '% bei ', BestandeneAnzahl, ' bestandenen Leistungen');
+  
+  { Zeugnis erstellen falls 100% }
+  if Fortschritt = 100.0 then
+  begin
+    if SchreibeZeugnisdatei(Name, Leistungen, Veranstaltungen) then
+      Writeln('Zeugnis wurde erfolgreich erstellt: Zeugnis_', Name, '.txt')
+    else
+      Writeln('Fehler beim Erstellen des Zeugnisses.');
+  end;
+  
+  { Speicher freigeben }
+  GibLeistungslisteWiederFrei(Leistungen);
+  GibVeranstaltungslisteWiederFrei(Veranstaltungen);
+  
+  { Speichercheck }
+  if SpeicherZaehler <> 0 then
+    Writeln('WARNUNG: Speicherleck entdeckt! Zählerstand: ', SpeicherZaehler);
+  
+  Writeln('Programm beendet.');
+end.
