@@ -10,7 +10,7 @@ program aufgabe10;
 {$R+,Q+,X-}
 
 uses
-  SysUtils;
+  System.SysUtils;
 
 type
   // hier speichern wir die daten einer veranstaltung aus der .sp datei
@@ -203,6 +203,7 @@ begin
   Fachrichtung := '';
 
   // vollständigen pfad zusammenbauen (damit es auch im richtigen ordner sucht)
+  Writeln('Suche in: ', ExtractFilePath(ParamStr(0)));
   Pfad := ExtractFilePath(ParamStr(0)) + Dateiname;
 
   // prüfen ob datei überhaupt da ist
@@ -555,8 +556,7 @@ begin
   SpeicherZaehler := 0;
   Leistungen := nil;
   Veranstaltungen := nil;
-  StudentenDateiOk := False;
-  FachrichtungsDateiOk := False;
+
 
   // user fragen welche datei er will
   Write('Bitte geben Sie den Dateinamen ein (inkl. Endung): ');
@@ -612,4 +612,5 @@ begin
     Writeln('WARNUNG: Speicherleck entdeckt! Zählerstand: ', SpeicherZaehler);
 
   Writeln('Programm beendet.');
+  readln;
 end.
