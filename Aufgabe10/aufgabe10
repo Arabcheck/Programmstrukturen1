@@ -116,14 +116,14 @@ var
   i: Integer;
 begin
   TempStr := S;
-  
+
   // kommas durch punkte ersetzen, weil pascal das so will
   for i := 1 to Length(TempStr) do
   begin
     if TempStr[i] = ',' then
       TempStr[i] := '.';
   end;
-  
+
   // jetzt versuchen zu konvertieren
   Val(TempStr, Wert, Code); // val gibt code=0 zurück, wenn alles ok
   if Code = 0 then
@@ -153,22 +153,30 @@ end;
 function IstLeerOderWhitespace(const S: string): Boolean;
 var
   i: Integer;
+  IstLeer: Boolean;
+  WeiterSuchen: Boolean;
 begin
-  IstLeerOderWhitespace := True;
+  IstLeer := True;
+  WeiterSuchen := True;
+
   // wenn string leer ist, dann ist er leer
-  if Length(S) = 0 then
-    Exit;
-  
-  // alle zeichen durchgehen
-  for i := 1 to Length(S) do
+  if Length(S) > 0 then
   begin
-    // wenn wir ein zeichen finden das kein leerzeichen ist
-    if (S[i] <> ' ') and (S[i] <> #9) and (S[i] <> #13) and (S[i] <> #10) then
+    i := 1;
+    // alle zeichen durchgehen solange wir noch suchen
+    while (i <= Length(S)) and WeiterSuchen do
     begin
-      IstLeerOderWhitespace := False;
-      Exit;
+      // wenn wir ein zeichen finden das kein leerzeichen ist
+      if (S[i] <> ' ') and (S[i] <> #9) and (S[i] <> #13) and (S[i] <> #10) then
+      begin
+        IstLeer := False;
+        WeiterSuchen := False;
+      end;
+      Inc(i);
     end;
   end;
+
+  IstLeerOderWhitespace := IstLeer;
 end;
 
 // liest eine studentendatei ein und packt alles in listen
@@ -193,10 +201,10 @@ begin
   AllesOk := True;
   Name := '';
   Fachrichtung := '';
-  
+
   // vollständigen pfad zusammenbauen (damit es auch im richtigen ordner sucht)
   Pfad := ExtractFilePath(ParamStr(0)) + Dateiname;
-  
+
   // prüfen ob datei überhaupt da ist
   if not FileExists(Pfad) then
   begin
@@ -210,7 +218,7 @@ begin
     try
       Assign(Datei, Pfad);
       Reset(Datei);
-      
+
       try
         // name aus erster zeile lesen
         if Eof(Datei) then
@@ -221,7 +229,7 @@ begin
         else
         begin
           Readln(Datei, Name);
-          
+
           // fachrichtung aus zweiter zeile lesen
           if Eof(Datei) then
           begin
@@ -231,12 +239,12 @@ begin
           else
           begin
             Readln(Datei, Fachrichtung);
-            
+
             // jetzt alle leistungen einlesen
             while AllesOk and not Eof(Datei) do
             begin
               Readln(Datei, Zeile);
-              
+
               // leere zeilen überspringen
               if Zeile <> '' then
               begin
@@ -252,7 +260,7 @@ begin
                   // nummer und note trennen
                   Nummer := Copy(Zeile, 1, DoppelpunktPos - 1);
                   NotenStr := Copy(Zeile, DoppelpunktPos + 1, Length(Zeile));
-                  
+
                   // nummer muss genau 5 zeichen haben
                   if Length(Nummer) <> 5 then
                   begin
@@ -290,19 +298,19 @@ begin
             end;
           end;
         end;
-        
+
       finally
         // datei immer schließen, egal ob fehler oder nicht
         Close(Datei);
       end;
-      
+
     except
       // fehler beim dateizugriff
       Writeln('Fehler beim Öffnen oder Lesen der Datei "', Dateiname, '".');
       AllesOk := False;
     end;
   end;
-  
+
   // rückgabewert setzen
   LeseStudentendatei := AllesOk;
 end;
@@ -319,10 +327,10 @@ begin
   LeseFachrichtungsdatei := False;
   Veranstaltungen := nil;
   AllesOk := True;
-  
+
   // pfad zur .sp datei zusammenbauen (z.b. "MB.sp")
   Pfad := ExtractFilePath(ParamStr(0)) + Fachrichtung + '.sp';
-  
+
   // schauen ob datei existiert
   if not FileExists(Pfad) then
   begin
@@ -336,7 +344,7 @@ begin
     try
       Assign(Datei, Pfad);
       Reset(Datei);
-      
+
       try
         // alle veranstaltungen einlesen
         while not Eof(Datei) do
@@ -345,19 +353,19 @@ begin
           // zur liste hinzufügen
           FuegeVeranstaltungHinzu(Veranstaltungen, Veranstaltung);
         end;
-        
+
       finally
         // datei immer schließen
         Close(Datei);
       end;
-      
+
     except
       // fehler beim dateizugriff
       Writeln('Fehler beim Öffnen oder Lesen der Fachrichtungsdatei "', Fachrichtung, '.sp".');
       AllesOk := False;
     end;
   end;
-  
+
   LeseFachrichtungsdatei := AllesOk;
 end;
 
@@ -372,7 +380,7 @@ var
 begin
   BestandeneAnzahl := 0;
   GesamtAnzahl := 0;
-  
+
   // erstmal zählen wie viele veranstaltungen es insgesamt gibt
   AktuelleVeranstaltung := Veranstaltungen;
   while AktuelleVeranstaltung <> nil do
@@ -380,14 +388,14 @@ begin
     Inc(GesamtAnzahl);
     AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
   end;
-  
+
   // jetzt schauen welche veranstaltungen bestanden sind (note <= 4,0)
   AktuelleVeranstaltung := Veranstaltungen;
   while AktuelleVeranstaltung <> nil do
   begin
     Gefunden := False;
     AktuelleLeistung := Leistungen;
-    
+
     // suchen ob student diese veranstaltung hat
     while (AktuelleLeistung <> nil) and not Gefunden do
     begin
@@ -399,10 +407,10 @@ begin
       end;
       AktuelleLeistung := AktuelleLeistung^.Next;
     end;
-    
+
     AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
   end;
-  
+
   // prozent berechnen
   if GesamtAnzahl > 0 then
     BerechneFortschritt := (BestandeneAnzahl / GesamtAnzahl) * 100
@@ -422,14 +430,14 @@ var
 begin
   GesamtPunkte := 0;
   GesamtECTS := 0;
-  
+
   // für jede veranstaltung schauen ob student sie hat
   AktuelleVeranstaltung := Veranstaltungen;
   while AktuelleVeranstaltung <> nil do
   begin
     Gefunden := False;
     AktuelleLeistung := Leistungen;
-    
+
     // in leistungen suchen
     while (AktuelleLeistung <> nil) and not Gefunden do
     begin
@@ -442,10 +450,10 @@ begin
       end;
       AktuelleLeistung := AktuelleLeistung^.Next;
     end;
-    
+
     AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
   end;
-  
+
   // durchschnitt berechnen
   if GesamtECTS > 0 then
     BerechneGesamtnote := GesamtPunkte / GesamtECTS
@@ -467,36 +475,36 @@ var
 begin
   SchreibeZeugnisdatei := False;
   AllesOk := True;
-  
+
   // prüfen ob name leer ist - dann kein zeugnis erstellen
   if IstLeerOderWhitespace(Name) then
   begin
     Writeln('Fehler: Kein gültiger Name vorhanden - Zeugnis kann nicht erstellt werden.');
     AllesOk := False;
   end;
-  
+
   // pfad für zeugnisdatei nur wenn name ok ist
   if AllesOk then
   begin
     Pfad := ExtractFilePath(ParamStr(0)) + 'Zeugnis_' + Name + '.txt';
-    
+
     // datei zum schreiben öffnen mit try/except
     try
       Assign(Datei, Pfad);
       Rewrite(Datei);
-      
+
       try
         // name und leerzeile schreiben
         Writeln(Datei, Name);
         Writeln(Datei, '');
-        
+
         // alle veranstaltungen mit noten rausschreiben
         AktuelleVeranstaltung := Veranstaltungen;
         while AktuelleVeranstaltung <> nil do
         begin
           Gefunden := False;
           AktuelleLeistung := Leistungen;
-          
+
           // passende leistung suchen
           while (AktuelleLeistung <> nil) and not Gefunden do
           begin
@@ -507,27 +515,27 @@ begin
             end;
             AktuelleLeistung := AktuelleLeistung^.Next;
           end;
-          
+
           AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
         end;
-        
+
         // gesamtnote berechnen und schreiben
         Gesamtnote := BerechneGesamtnote(Leistungen, Veranstaltungen);
         Writeln(Datei, '');
         Writeln(Datei, 'Gesamtnote: ', RealZuStringMitZweiStellen(Gesamtnote));
-        
+
       finally
         // datei immer schließen
         Close(Datei);
       end;
-      
+
     except
       // fehler beim dateizugriff
       Writeln('Fehler beim Erstellen oder Schreiben der Zeugnisdatei.');
       AllesOk := False;
     end;
   end;
-  
+
   SchreibeZeugnisdatei := AllesOk;
 end;
 
@@ -541,7 +549,7 @@ var
   BestandeneAnzahl: Integer;
   StudentenDateiOk: Boolean;
   FachrichtungsDateiOk: Boolean;
-  
+
 begin
   // alles auf startwerte setzen
   SpeicherZaehler := 0;
@@ -549,29 +557,29 @@ begin
   Veranstaltungen := nil;
   StudentenDateiOk := False;
   FachrichtungsDateiOk := False;
-  
+
   // user fragen welche datei er will
   Write('Bitte geben Sie den Dateinamen ein (inkl. Endung): ');
   Readln(Dateiname);
-  
+
   // studentendatei einlesen
   StudentenDateiOk := LeseStudentendatei(Dateiname, Name, Fachrichtung, Leistungen);
-  
+
   // nur weitermachen wenn das geklappt hat
   if StudentenDateiOk then
   begin
     // fachrichtungsdatei einlesen
     FachrichtungsDateiOk := LeseFachrichtungsdatei(Fachrichtung, Veranstaltungen);
-    
+
     // nur weitermachen wenn auch das geklappt hat
     if FachrichtungsDateiOk then
     begin
       // fortschritt berechnen
       Fortschritt := BerechneFortschritt(Leistungen, Veranstaltungen, BestandeneAnzahl);
-      
+
       // ergebnis ausgeben - GERUNDET auf ganze zahl
       Writeln(Round(Fortschritt), '% bei ', BestandeneAnzahl, ' bestandenen Leistungen');
-      
+
       // zeugnis erstellen wenn alles bestanden UND name vorhanden
       if Round(Fortschritt) = 100 then
       begin
@@ -594,14 +602,14 @@ begin
     Writeln('Druecken Sie eine beliebige Taste zum Beenden...');
     Readln;
   end;
-  
+
   // aufräumen - speicher freigeben
   GibLeistungslisteWiederFrei(Leistungen);
   GibVeranstaltungslisteWiederFrei(Veranstaltungen);
-  
+
   // prüfen ob wir speicher vergessen haben
   if SpeicherZaehler <> 0 then
     Writeln('WARNUNG: Speicherleck entdeckt! Zählerstand: ', SpeicherZaehler);
-  
+
   Writeln('Programm beendet.');
 end.
