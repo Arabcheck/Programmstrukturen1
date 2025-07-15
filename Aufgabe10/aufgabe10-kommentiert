@@ -1,0 +1,1805 @@
+program aufgabe10;
+{
+  ZWECK:
+  Dieses Programm verwaltet Studentendaten und erstellt Zeugnisse.
+  Es liest Studentenleistungen ein, vergleicht sie mit den Anforderungen
+  der Fachrichtung und berechnet den Studienfortschritt.
+  
+  HAUPTFUNKTIONEN:
+  - Einlesen von Studentendaten aus Text-Dateien
+  - Einlesen von Fachrichtungsanforderungen aus Binär-Dateien
+  - Berechnung des Studienfortschritts in Prozent
+  - Erstellung von Zeugnis-Dateien bei vollständigem Abschluss
+  - Speicherverwaltung mit Leck-Erkennung
+}
+
+// implizierte string umwandlung bekommen wir nicht weg. Frage in der Abgabe!
+// FERTIG Gleitkommazahlen runden auf int zahlen zum überprüfen
+// FERTIG Dateien ohne Studentennamen soll kein Zeugnis erstellt werden
+// FERTIG try/except für Dateizugriff statt IOResult
+
+{
+  COMPILER-DIREKTIVEN:
+  $APPTYPE CONSOLE - Definiert dies als Konsolen-Anwendung (schwarzes Fenster)
+  $R+ - Range Checking EIN: Prüft Array-Grenzen zur Laufzeit (verhindert Buffer Overflows)
+  $Q+ - Overflow Checking EIN: Prüft Integer-Überläufe (verhindert Wraparound-Fehler)
+  $X- - Extended Syntax AUS: Verbietet erweiterte Pascal-Syntax für Kompatibilität
+}
+{$APPTYPE CONSOLE}
+{$R+,Q+,X-}
+
+uses
+  System.SysUtils;  // Stellt Funktionen bereit: FileExists, ExtractFilePath, ParamStr
+
+type
+  {
+    TVeranstaltung - Datenstruktur für eine einzelne Lehrveranstaltung
+    
+    Diese Struktur repräsentiert eine Veranstaltung aus der Fachrichtung.
+    Sie wird aus der .sp-Datei (Studienplan) eingelesen.
+    
+    Speicherverbrauch: 7 Bytes total
+    - Nummer: 6 Bytes (1 Byte Länge + 5 Bytes Daten bei Short String)
+    - ECTS: 1 Byte (0-255 Wertebereich reicht für Kreditpunkte)
+  }
+  TVeranstaltung = record
+    Nummer: string[5];    // Veranstaltungscode wie "MB001", "WI205", etc.
+    ECTS: Byte;           // Kreditpunkte (European Credit Transfer System), meist 5 oder 10
+  end;
+
+  {
+    TLeistung - Datenstruktur für eine erbrachte Leistung eines Studenten
+    
+    Repräsentiert eine abgelegte Prüfung mit der erzielten Note.
+    Wird aus der Studentendatei eingelesen.
+    
+    Speicherverbrauch: 12 Bytes total
+    - Nummer: 6 Bytes (Short String[5])
+    - Note: 6 Bytes (Real-Typ in Pascal)
+  }
+  TLeistung = record
+    Nummer: string[5];    // Welche Veranstaltung (muss mit TVeranstaltung.Nummer übereinstimmen)
+    Note: Real;           // Erzielte Note (1.0 = sehr gut, 4.0 = ausreichend, >4.0 = nicht bestanden)
+  end;
+
+  {
+    VERKETTETE LISTEN - Dynamische Datenstrukturen
+    
+    Wir verwenden verkettete Listen statt Arrays, weil:
+    1. Die Anzahl der Veranstaltungen/Leistungen ist zur Compile-Zeit unbekannt
+    2. Dynamisches Hinzufügen ist einfach (O(1) am Anfang)
+    3. Kein Speicher-Verschwendung (nur so viel Speicher wie nötig)
+    
+    FORWARD-DEKLARATION:
+    Wir müssen PVeranstaltungNode VOR TVeranstaltungNode deklarieren,
+    obwohl TVeranstaltungNode noch nicht existiert. Das funktioniert in Pascal
+    durch Forward-Deklaration mit dem ^ Symbol.
+  }
+  
+  // Pointer-Typ für die verkettete Liste der Veranstaltungen
+  PVeranstaltungNode = ^TVeranstaltungNode;
+  
+  {
+    TVeranstaltungNode - Ein einzelnes Element der verketteten Liste
+    
+    STRUKTUR EINER VERKETTETEN LISTE:
+    Liste -> [Data|Next] -> [Data|Next] -> [Data|Next] -> nil
+    
+    - Data: Enthält die eigentlichen Veranstaltungsdaten
+    - Next: Zeiger auf das nächste Element (nil = Ende der Liste)
+    
+    SPEICHER-LAYOUT:
+    [0-6]   Data (TVeranstaltung, 7 Bytes)
+    [7-10]  Next (Pointer, 4 Bytes auf 32-bit System)
+    Total: 11 Bytes pro Knoten
+  }
+  TVeranstaltungNode = record
+    Data: TVeranstaltung;      // die eigentlichen Veranstaltungsdaten
+    Next: PVeranstaltungNode;  // zeigt auf das nächste element in der liste (nil = Ende)
+  end;
+
+  // Identische Struktur für Leistungen - separate Typen für Typsicherheit
+  PLeistungNode = ^TLeistungNode;
+  TLeistungNode = record
+    Data: TLeistung;           // daten zur erbrachten leistung
+    Next: PLeistungNode;       // zeigt auf das nächste element (nil = Ende)
+  end;
+
+var
+  {
+    SPEICHER-DEBUGGING Variable
+    
+    Zählt alle New() und Dispose() Operationen:
+    - Bei jedem New(): SpeicherZaehler++
+    - Bei jedem Dispose(): SpeicherZaehler--
+    - Am Programmende sollte der Zähler 0 sein
+    
+    Wenn Zähler != 0: SPEICHERLECK entdeckt!
+    Wenn Zähler < 0: DOPPELTER DISPOSE (sehr gefährlich!)
+  }
+  SpeicherZaehler: Integer;
+
+{
+  LISTEN-VERWALTUNG: FuegeVeranstaltungHinzu
+  
+  Fügt eine neue Veranstaltung am ANFANG der verketteten Liste hinzu.
+  
+  WARUM AM ANFANG?
+  - O(1) Zeitkomplexität (konstante Zeit)
+  - Einfache Implementierung
+  - Reihenfolge ist für unsere Anwendung nicht wichtig
+  
+  LIFO-PRINZIP (Last In, First Out):
+  Das zuletzt eingefügte Element steht am Anfang der Liste.
+  
+  PARAMETER:
+  - var Liste: Der Listenkopf wird verändert (Referenz-Parameter)
+  - Veranstaltung: Wird kopiert (Wert-Parameter, 7 Bytes kopiert)
+}
+procedure FuegeVeranstaltungHinzu(var Liste: PVeranstaltungNode; Veranstaltung: TVeranstaltung);
+var
+  NeuerKnoten: PVeranstaltungNode;  // Lokaler Pointer für den neuen Knoten
+begin
+  {
+    NEW() - HEAP-SPEICHER ALLOKATION
+    
+    New(NeuerKnoten) macht folgendes:
+    1. Fragt beim Betriebssystem Speicher an (sizeof(TVeranstaltungNode) ≈ 11 Bytes)
+    2. Bekommt Zeiger auf freien Speicherbereich im Heap
+    3. Speicher ist UNINITIALISIERT (enthält Zufallsdaten!)
+    4. Gibt Zeiger an NeuerKnoten zurück
+    
+    HEAP vs STACK:
+    - Stack: Lokale Variablen, automatische Freigabe, begrenzte Größe
+    - Heap: Dynamischer Speicher, manuelle Freigabe, große Größe möglich
+  }
+  New(NeuerKnoten);
+  
+  {
+    SPEICHER-TRACKING für Debugging
+    Inc(x) ist equivalent zu x := x + 1, aber effizienter.
+    Jede Allokation wird gezählt.
+  }
+  Inc(SpeicherZaehler);
+  
+  {
+    POINTER-DEREFERENZIERUNG und DATEN-ZUWEISUNG
+    
+    NeuerKnoten^.Data bedeutet:
+    - NeuerKnoten: Zeiger-Variable (enthält Speicher-Adresse)
+    - ^: Dereferenzierungs-Operator (folge dem Zeiger)
+    - .Data: Zugriff auf das Data-Feld des Records
+    
+    WICHTIG: Record-Zuweisung kopiert ALLE Felder (7 Bytes):
+    - Veranstaltung.Nummer wird nach NeuerKnoten^.Data.Nummer kopiert
+    - Veranstaltung.ECTS wird nach NeuerKnoten^.Data.ECTS kopiert
+  }
+  NeuerKnoten^.Data := Veranstaltung;
+  
+  {
+    VERKETTUNG der Liste
+    
+    VORHER:  Liste -> [Knoten1] -> [Knoten2] -> nil
+    NACHHER: Liste -> [NeuerKnoten] -> [Knoten1] -> [Knoten2] -> nil
+                           ^
+                      Next zeigt auf alte Liste
+    
+    Schritt 1: Neuer Knoten zeigt auf den bisherigen Listenanfang
+    Schritt 2: Listenkopf zeigt auf den neuen Knoten
+  }
+  NeuerKnoten^.Next := Liste;          // Verkettung: neuer Knoten zeigt auf alte Liste
+  Liste := NeuerKnoten;                // Listenkopf zeigt jetzt auf neuen Knoten
+end;
+
+{
+  LISTEN-VERWALTUNG: FuegeLeistungHinzu
+  
+  Identische Logik wie FuegeVeranstaltungHinzu, aber für Leistungs-Liste.
+  Separate Prozedur wegen Typsicherheit (kann nicht versehentlich
+  Veranstaltungen in Leistungs-Liste einfügen).
+}
+procedure FuegeLeistungHinzu(var Liste: PLeistungNode; Leistung: TLeistung);
+var
+  NeuerKnoten: PLeistungNode;
+begin
+  New(NeuerKnoten);                // Heap-Speicher für neuen Leistungs-Knoten allokieren
+  Inc(SpeicherZaehler);            // Allokations-Zähler für Speicher-Debugging erhöhen
+  NeuerKnoten^.Data := Leistung;   // Leistungsdaten in neuen Knoten kopieren (12 Bytes)
+  NeuerKnoten^.Next := Liste;      // Neuen Knoten am Listenanfang verketten
+  Liste := NeuerKnoten;            // Listenkopf auf neuen Knoten setzen
+end;
+
+{
+  SPEICHER-VERWALTUNG: GibVeranstaltungslisteWiederFrei
+  
+  Gibt ALLE Knoten einer verketteten Liste frei und verhindert Memory Leaks.
+  
+  KRITISCHER PUNKT - DANGLING POINTER PROBLEM:
+  Wir können nicht einfach schreiben:
+    while Aktuell <> nil do
+    begin
+      Dispose(Aktuell);           // Speicher freigegeben!
+      Aktuell := Aktuell^.Next;   // FEHLER! Zugriff auf freigegebenen Speicher!
+    end;
+  
+  LÖSUNG: Nächsten Zeiger VORHER merken.
+  
+  PARAMETER:
+  var Liste: Referenz-Parameter, damit der Original-Zeiger auf nil gesetzt werden kann
+}
+procedure GibVeranstaltungslisteWiederFrei(var Liste: PVeranstaltungNode);
+var
+  Aktuell, Naechster: PVeranstaltungNode;  // Zwei Zeiger für sicheres Durchlaufen
+begin
+  Aktuell := Liste;  // Startet am Listenanfang
+  
+  {
+    SICHERES DURCHLAUFEN und FREIGEBEN
+    
+    Schleife läuft solange, bis wir das Ende erreichen (nil).
+    
+    REIHENFOLGE ist kritisch:
+    1. Nächsten Zeiger merken (bevor wir den aktuellen Knoten löschen)
+    2. Aktuellen Knoten freigeben
+    3. Zum gemerkten nächsten Knoten weitergehen
+  }
+  while Aktuell <> nil do
+  begin
+    {
+      NÄCHSTEN ZEIGER MERKEN
+      
+      WICHTIG: Das muss VOR dem Dispose() passieren!
+      Nach Dispose(Aktuell) ist Aktuell^.Next nicht mehr zugänglich,
+      da der Speicher freigegeben wurde.
+    }
+    Naechster := Aktuell^.Next;  // Merken wo's weitergeht, bevor wir löschen
+    
+    {
+      DISPOSE() - HEAP-SPEICHER FREIGABE
+      
+      Dispose(Aktuell) macht folgendes:
+      1. Markiert den Speicherbereich als "frei"
+      2. Gibt ihn an den Heap-Manager zurück
+      3. Speicher kann für andere New()-Aufrufe wiederverwendet werden
+      
+      WICHTIG: Der Zeiger wird NICHT automatisch auf nil gesetzt!
+      Aktuell zeigt noch auf den freigegebenen Speicher (Dangling Pointer).
+    }
+    Dispose(Aktuell);            // Speicher des aktuellen Knotens freigeben
+    
+    {
+      SPEICHER-TRACKING für Debugging
+      Dec(x) ist equivalent zu x := x - 1.
+      Balance zu den Inc() Aufrufen in den Einfüge-Prozeduren.
+    }
+    Dec(SpeicherZaehler);        // Freigabe-Zähler für Speicher-Debugging
+    
+    {
+      ITERATION: Zum nächsten Knoten
+      
+      Verwenden den GEMERKTEN Zeiger, nicht Aktuell^.Next
+      (das wäre ein Zugriff auf freigegebenen Speicher).
+    }
+    Aktuell := Naechster;        // Zum vorher gemerkten nächsten Element
+  end;
+  
+  {
+    LISTE ALS LEER MARKIEREN
+    
+    Setzt den Original-Listenkopf auf nil.
+    Wichtig für:
+    1. Weitere Operationen auf der Liste (erkennen dass sie leer ist)
+    2. Verhindern von Zugriffen auf freigegebene Knoten
+    3. Saubere Reinitialisierung
+  }
+  Liste := nil;  // Liste ist jetzt komplett leer und bereit für neue Verwendung
+end;
+
+{
+  SPEICHER-VERWALTUNG: GibLeistungslisteWiederFrei
+  
+  Identische Logik wie GibVeranstaltungslisteWiederFrei,
+  aber für Leistungs-Listen. Separate Prozedur wegen Typsicherheit.
+}
+procedure GibLeistungslisteWiederFrei(var Liste: PLeistungNode);
+var
+  Aktuell, Naechster: PLeistungNode;
+begin
+  Aktuell := Liste;
+  
+  // Exakt gleicher Algorithmus wie bei Veranstaltungen
+  while Aktuell <> nil do
+  begin
+    Naechster := Aktuell^.Next;   // Nächstes Element merken vor dem Löschen
+    Dispose(Aktuell);             // Aktuellen Knoten freigeben
+    Dec(SpeicherZaehler);         // Speicherzähler für Debugging dekrementieren
+    Aktuell := Naechster;         // Iteration zum nächsten Element
+  end;
+  Liste := nil;   // Liste als leer markieren
+end;
+
+{
+  STRING-VERARBEITUNG: StringZuReal
+  
+  Konvertiert einen String robust in eine Gleitkommazahl.
+  
+  LOKALISIERUNG:
+  Deutsche Notation verwendet Komma als Dezimaltrennzeichen: "1,5"
+  Pascal's Val() erwartet englische Notation mit Punkt: "1.5"
+  Diese Funktion konvertiert automatisch Komma zu Punkt.
+  
+  ZWEI-WEGE-RÜCKGABE:
+  - Funktions-Rückgabewert: Die konvertierte Zahl (oder 0 bei Fehler)
+  - var Erfolg: Boolean Flag ob Konvertierung erfolgreich war
+  
+  WARUM ZWEI RÜCKGABE-WEGE?
+  Bei Fehlern wollen wir wissen DASS ein Fehler aufgetreten ist,
+  nicht nur einen Default-Wert bekommen.
+}
+function StringZuReal(const S: string; var Erfolg: Boolean): Real;
+var
+  Code: Integer;      // Fehlercode von Val() (0 = Erfolg, >0 = Position des Fehlers)
+  Wert: Real;         // Temporäre Variable für das Konvertierungs-Ergebnis
+  TempStr: string;    // Arbeitskopie des Eingabe-Strings
+  i: Integer;         // Schleifenzähler für Komma-Ersetzung
+begin
+  {
+    CONST-PARAMETER bedeutet:
+    - S kann nur gelesen, nicht verändert werden
+    - S wird nicht kopiert (Referenz), daher effizienter
+    - Wir brauchen TempStr für Modifikationen
+  }
+  TempStr := S;  // Arbeitskopie erstellen, da S const ist
+
+  {
+    LOKALISIERUNG: Komma zu Punkt Konvertierung
+    
+    Deutsche Eingaben wie "1,5" oder "2,75" werden zu "1.5" bzw. "2.75".
+    
+    PASCAL STRING INDEXING:
+    Pascal-Strings sind 1-basiert (erstes Zeichen hat Index 1).
+    Length(TempStr) gibt die Anzahl Zeichen zurück.
+    
+    CHARACTER-BY-CHARACTER REPLACEMENT:
+    Geht durch jeden Buchstaben und ersetzt ',' durch '.'.
+  }
+  for i := 1 to Length(TempStr) do
+  begin
+    if TempStr[i] = ',' then
+      TempStr[i] := '.';  // In-Place Ersetzung
+  end;
+
+  {
+    VAL() - PASCAL'S EINGEBAUTE STRING-ZU-ZAHL KONVERTIERUNG
+    
+    Syntax: Val(Eingabe-String, Ausgabe-Variable, Fehlercode)
+    
+    RÜCKGABE-WERTE:
+    - Code = 0: Konvertierung erfolgreich, Wert ist gültig
+    - Code > 0: Fehler an Position 'Code' im String
+    
+    BEISPIELE:
+    Val('1.5', Wert, Code)    -> Code=0, Wert=1.5
+    Val('abc', Wert, Code)    -> Code=1, Wert=undefined
+    Val('1.x', Wert, Code)    -> Code=3, Wert=undefined
+    Val('', Wert, Code)       -> Code=1, Wert=undefined
+  }
+  Val(TempStr, Wert, Code);
+  
+  {
+    ERGEBNIS-AUSWERTUNG und RÜCKGABE
+    
+    Val() gibt Code=0 zurück wenn alles erfolgreich war.
+    Bei Erfolg: Gültigen Wert und true zurückgeben.
+    Bei Fehler: Sicheren Default-Wert (0) und false zurückgeben.
+  }
+  if Code = 0 then
+  begin
+    StringZuReal := Wert;     // Erfolgreiche Konvertierung: echten Wert zurückgeben
+    Erfolg := True;           // Erfolgs-Flag für Aufrufer setzen
+  end
+  else
+  begin
+    StringZuReal := 0;        // Fehler: sicheren Default-Wert zurückgeben
+    Erfolg := False;          // Fehler-Flag für Aufrufer setzen
+  end;
+end;
+
+{
+  FORMATIERUNG: RealZuStringMitZweiStellen
+  
+  Konvertiert eine Gleitkommazahl in einen String mit exakt 2 Nachkommastellen.
+  
+  VERWENDUNG:
+  Für formatierte Ausgabe von Noten im Zeugnis.
+  Beispiel: 1.23456 -> "1.23", 2.0 -> "2.00"
+}
+function RealZuStringMitZweiStellen(Wert: Real): string;
+var
+  TempStr: string;  // Temporärer String für Str() Ausgabe
+begin
+  {
+    STR() - PASCAL'S ZAHL-ZU-STRING KONVERTIERUNG
+    
+    Syntax: Str(Zahl:Feldbreite:Nachkommastellen, Ausgabe-String)
+    
+    FORMAT-PARAMETER:
+    - Wert: Die zu konvertierende Zahl
+    - 0: Minimale Feldbreite (0 = automatisch, so schmal wie möglich)
+    - 2: Anzahl Nachkommastellen (immer genau 2, auch bei ganzen Zahlen)
+    
+    BEISPIELE:
+    Str(1.0:0:2, S)     -> S = "1.00"
+    Str(1.23456:0:2, S) -> S = "1.23"
+    Str(123.4:0:2, S)   -> S = "123.40"
+    Str(1.0:8:2, S)     -> S = "    1.00" (8 Zeichen breit, rechtsbündig)
+  }
+  Str(Wert:0:2, TempStr);
+  RealZuStringMitZweiStellen := TempStr;
+end;
+
+{
+  STRING-ANALYSE: IstLeerOderWhitespace
+  
+  Prüft ob ein String leer ist oder nur aus Whitespace-Zeichen besteht.
+  
+  WHITESPACE-ZEICHEN:
+  - ' ' (Space, ASCII 32): Normales Leerzeichen
+  - #9 (Tab, ASCII 9): Tabulator
+  - #13 (CR, ASCII 13): Carriage Return (Wagenrücklauf)
+  - #10 (LF, ASCII 10): Line Feed (Zeilenvorschub)
+  
+  VERWENDUNG:
+  Validierung von Eingaben (z.B. Studentenname darf nicht leer sein).
+  
+  EFFIZIENZ-OPTIMIERUNG:
+  Vorzeitiger Ausstieg bei erstem Nicht-Whitespace-Zeichen.
+}
+function IstLeerOderWhitespace(const S: string): Boolean;
+var
+  i: Integer;           // Schleifenzähler
+  IstLeer: Boolean;     // Ergebnis-Variable
+  WeiterSuchen: Boolean; // Flag für vorzeitigen Schleifenausstieg
+begin
+  {
+    PESSIMISTISCHE INITIALISIERUNG:
+    Nehmen an, dass der String leer ist, bis wir das Gegenteil beweisen.
+  }
+  IstLeer := True;
+  WeiterSuchen := True;
+
+  {
+    LÄNGEN-CHECK für Effizienz:
+    Wenn String komplett leer ist (Length = 0), sparen wir uns die Schleife.
+  }
+  if Length(S) > 0 then
+  begin
+    i := 1;  // Pascal-Strings starten bei Index 1
+    
+    {
+      ZEICHEN-SCHLEIFE mit vorzeitigem Ausstieg:
+      
+      BEDINGUNGEN:
+      - (i <= Length(S)): Noch nicht am Ende angekommen
+      - WeiterSuchen: Noch kein Nicht-Whitespace gefunden
+      
+      BEIDE müssen true sein damit die Schleife weiterläuft.
+      Sobald WeiterSuchen false wird, stoppt die Schleife sofort.
+    }
+    while (i <= Length(S)) and WeiterSuchen do
+    begin
+      {
+        WHITESPACE-CHECK für aktuelles Zeichen:
+        
+        Prüft ob das aktuelle Zeichen KEIN Whitespace ist.
+        Wenn ja: String ist nicht leer, Suche beenden.
+        
+        VIER STANDARD-WHITESPACE-ZEICHEN:
+        - ' ': Leerzeichen
+        - #9: Tab
+        - #13: Carriage Return (Windows/DOS Zeilenende)
+        - #10: Line Feed (Unix Zeilenende)
+        
+        WINDOWS ZEILENENDE: #13#10 (CRLF)
+        UNIX ZEILENENDE: #10 (LF)
+        MAC ZEILENENDE (alt): #13 (CR)
+      }
+      if (S[i] <> ' ') and (S[i] <> #9) and (S[i] <> #13) and (S[i] <> #10) then
+      begin
+        IstLeer := False;        // Nicht-Whitespace gefunden -> String ist nicht leer
+        WeiterSuchen := False;   // Vorzeitiger Ausstieg (Effizienz-Optimierung)
+      end;
+      Inc(i);  // Zum nächsten Zeichen
+    end;
+  end;
+
+  IstLeerOderWhitespace := IstLeer;
+end;
+
+{
+  DATEI-VERARBEITUNG: LeseStudentendatei
+  
+  Liest eine Studentendatei ein und parst alle Informationen.
+  
+  DATEI-FORMAT:
+  Zeile 1: Name des Studenten (z.B. "Max Mustermann")
+  Zeile 2: Fachrichtung (z.B. "MB", "WI")
+  Zeile 3+: Leistungen im Format "NUMMER:NOTE" (z.B. "MB001:1.7")
+  
+  BEISPIEL-DATEI "student1.txt":
+  Max Mustermann
+  MB
+  MB001:1.5
+  MB002:2.0
+  MB003:1.7
+  
+  MEHRFACH-RÜCKGABE:
+  - Funktions-Rückgabe: Boolean (Erfolg/Fehler)
+  - var Name: Student Name
+  - var Fachrichtung: Fachrichtung für .sp-Datei
+  - var Leistungen: Verkettete Liste aller eingelesenen Leistungen
+  
+  ROBUSTE FEHLERBEHANDLUNG:
+  - Datei-Existenz prüfen
+  - Try/Except für Dateizugriffe
+  - Try/Finally für sicheres Schließen
+  - Validierung aller Eingaben
+}
+function LeseStudentendatei(const Dateiname: string; var Name, Fachrichtung: string; var Leistungen: PLeistungNode): Boolean;
+var
+  Datei: Text;                // Text-Datei Handle (für zeilenweise Verarbeitung)
+  Zeile: string;              // Puffer für aktuell gelesene Zeile
+  DoppelpunktPos: Integer;    // Position des ':' in "NUMMER:NOTE" Format
+  Nummer: string;             // Veranstaltungsnummer (Teil vor dem ':')
+  NotenStr: string;           // Note als String (Teil nach dem ':')
+  Note: Real;                 // Note als Gleitkommazahl
+  Leistung: TLeistung;        // Temporäre Leistung für die Liste
+  Pfad: string;               // Vollständiger Dateipfad
+  Erfolg: Boolean;            // Für StringZuReal Konvertierung
+  AllesOk: Boolean;           // Master-Flag für Fehlerbehandlung
+begin
+  {
+    PESSIMISTISCHE INITIALISIERUNG:
+    
+    Setzen erstmal alles auf "Fehler"-Zustand.
+    Nur wenn ALLES erfolgreich ist, wird am Ende true zurückgegeben.
+    
+    DEFENSIVE PROGRAMMIERUNG:
+    Ausgabe-Parameter werden auf sichere Default-Werte gesetzt.
+  }
+  LeseStudentendatei := False;  // Pessimistisch: erstmal Fehler annehmen
+  Leistungen := nil;            // Liste startet leer
+  AllesOk := True;              // Flag für Fehler-Kaskadierung
+  Name := '';                   // Leere Strings als Default
+  Fachrichtung := '';
+
+  {
+    PFAD-KONSTRUKTION:
+    
+    ParamStr(0) gibt den vollständigen Pfad zur ausführbaren Datei zurück.
+    ExtractFilePath() extrahiert nur den Verzeichnis-Teil (mit abschließendem \).
+    
+    BEISPIEL:
+    Wenn Programm in "C:\Student\Programm.exe" liegt:
+    ParamStr(0) = "C:\Student\Programm.exe"
+    ExtractFilePath(ParamStr(0)) = "C:\Student\"
+    Pfad = "C:\Student\" + "student1.txt" = "C:\Student\student1.txt"
+    
+    WARUM NICHT NUR DEN DATEINAMEN?
+    Das Programm soll die Dateien im gleichen Verzeichnis wie die .exe suchen.
+  }
+  Writeln('Suche in: ', ExtractFilePath(ParamStr(0)));
+  Pfad := ExtractFilePath(ParamStr(0)) + Dateiname;
+
+  {
+    DATEI-EXISTENZ PRÜFUNG:
+    
+    FileExists() prüft ob die Datei existiert und lesbar ist.
+    Verhindert Laufzeit-Fehler beim Öffnen nicht-existierender Dateien.
+    
+    FRÜHE RÜCKGABE:
+    Bei Fehler setzen wir AllesOk := False und springen alle weiteren Checks.
+  }
+  if not FileExists(Pfad) then
+  begin
+    Writeln('Fehler: Datei "', Dateiname, '" existiert nicht.');
+    AllesOk := False;
+  end;
+
+  {
+    HAUPT-VERARBEITUNG mit Exception-Handling:
+    
+    Nur wenn die Datei existiert, versuchen wir sie zu öffnen und zu lesen.
+    
+    NESTED TRY-STRUKTUREN:
+    - Äußeres Try/Except: Fängt alle Dateizugriffs-Exceptions
+    - Inneres Try/Finally: Stellt sicher dass Datei immer geschlossen wird
+    
+    WARUM NESTED?
+    Finally-Block wird IMMER ausgeführt (auch bei Exceptions).
+    Except-Block wird nur bei Exceptions ausgeführt.
+  }
+  if AllesOk then
+  begin
+    try
+      {
+        DATEI-ÖFFNUNG (Pascal Text-Datei Mechanismus):
+        
+        Assign(Datei, Pfad):
+        - Verknüpft das File-Handle 'Datei' mit dem physischen Dateipfad
+        - Noch kein Dateizugriff, nur Zuordnung
+        
+        Reset(Datei):
+        - Öffnet die Datei zum Lesen
+        - Positioniert File-Pointer an den Anfang
+        - Kann IOError-Exception werfen
+        
+        ALTERNATIVE zu IOResult-Checking:
+        Früher: Assign(); Reset(); if IOResult <> 0 then ...
+        Heute: Try/Except (sauberer und robuster)
+      }
+      Assign(Datei, Pfad);
+      Reset(Datei);
+
+      try
+        {
+          NAME EINLESEN (erste Zeile):
+          
+          Eof(Datei) = "End of File":
+          - Prüft ob wir bereits am Dateiende sind
+          - True wenn keine Daten mehr zum Lesen vorhanden
+          - False wenn noch mindestens ein Zeichen zu lesen ist
+          
+          WARUM EOF-CHECK VOR READLN?
+          Eof() verhindert Exception beim Lesen einer leeren Datei.
+          Readln() auf leerer Datei würde Runtime-Error verursachen.
+          
+          READLN vs READ:
+          - Readln(): Liest eine komplette Zeile bis zum Zeilenendezeichen
+          - Read(): Liest nur ein Zeichen oder ein Wort
+        }
+        if Eof(Datei) then
+        begin
+          Writeln('Fehler: Datei ist leer - Name fehlt.');
+          AllesOk := False;
+        end
+        else
+        begin
+          {
+            READLN() - ZEILE LESEN:
+            
+            Liest alles von der aktuellen Position bis zum nächsten:
+            - #13#10 (Windows: Carriage Return + Line Feed)
+            - #10 (Unix: Line Feed)
+            - #13 (Mac classic: Carriage Return)
+            
+            Nach Readln() steht der File-Pointer am Anfang der nächsten Zeile.
+            Zeilenendezeichen werden automatisch entfernt.
+          }
+          Readln(Datei, Name);
+
+          {
+            FACHRICHTUNG EINLESEN (zweite Zeile):
+            
+            Erneuter Eof-Check für robuste Verarbeitung.
+            Datei könnte nur eine Zeile enthalten.
+          }
+          if Eof(Datei) then
+          begin
+            Writeln('Fehler: Fachrichtung fehlt in der Datei.');
+            AllesOk := False;
+          end
+          else
+          begin
+            Readln(Datei, Fachrichtung);
+
+            {
+              LEISTUNGEN EINLESEN (alle weiteren Zeilen):
+              
+              SCHLEIFE bis Dateiende:
+              - while not Eof(Datei): Solange noch Daten vorhanden
+              - AllesOk: Vorzeitiger Ausstieg bei Fehlern
+              
+              WARUM BEIDE BEDINGUNGEN?
+              Bei Parsefehlern wollen wir nicht weiterlesen,
+              auch wenn noch Zeilen vorhanden sind.
+            }
+            while AllesOk and not Eof(Datei) do
+            begin
+              Readln(Datei, Zeile);
+
+              {
+                LEERZEILEN ÜBERSPRINGEN:
+                
+                Ignoriert komplett leere Zeilen für robuste Verarbeitung.
+                Benutzer können versehentlich Leerzeilen eingefügt haben.
+                
+                ALTERNATIVE: Auch Whitespace-only Zeilen überspringen
+                if not IstLeerOderWhitespace(Zeile) then
+              }
+              if Zeile <> '' then
+              begin
+                {
+                  STRING-PARSING: "NUMMER:NOTE" aufteilen
+                  
+                  Pos(':', Zeile):
+                  - Sucht das erste Vorkommen von ':' in der Zeile
+                  - Gibt Position zurück (1-basiert)
+                  - Gibt 0 zurück wenn ':' nicht gefunden
+                  
+                  BEISPIEL:
+                  Zeile = "MB001:1.7"
+                  Pos(':', Zeile) = 6 (der Doppelpunkt steht an Position 6)
+                }
+                DoppelpunktPos := Pos(':', Zeile);
+                if DoppelpunktPos = 0 then
+                begin
+                  Writeln('Fehler: Ungültiges Format in Zeile "', Zeile, '" - Doppelpunkt fehlt.');
+                  AllesOk := False;
+                end
+                else
+                begin
+                  {
+                    COPY() - STRING-TEILSTRING EXTRAKTION:
+                    
+                    Copy(String, StartPos, Länge):
+                    - Extrahiert Teilstring aus dem Original
+                    - 1-basierte Indizierung
+                    - Erstellt neue String-Kopie
+                    
+                    BEISPIEL "MB001:1.7" mit DoppelpunktPos = 6:
+                    
+                    Nummer = Copy("MB001:1.7", 1, 5)
+                    - Startet bei Position 1
+                    - Nimmt 5 Zeichen (DoppelpunktPos - 1)
+                    - Ergebnis: "MB001"
+                    
+                    NotenStr = Copy("MB001:1.7", 7, 9)
+                    - Startet bei Position 7 (DoppelpunktPos + 1)
+                    - Nimmt 9 Zeichen (Length(Zeile) = 9)
+                    - Ergebnis: "1.7"
+                    
+                    WARUM Length(Zeile) als Länge?
+                    Copy() nimmt automatisch nur so viele Zeichen wie vorhanden.
+                    Wenn wir mehr anfordern als verfügbar, wird nur der Rest genommen.
+                  }
+                  Nummer := Copy(Zeile, 1, DoppelpunktPos - 1);
+                  NotenStr := Copy(Zeile, DoppelpunktPos + 1, Length(Zeile));
+
+                  {
+                    VERANSTALTUNGSNUMMER VALIDIERUNG:
+                    
+                    Alle Veranstaltungsnummern müssen genau 5 Zeichen haben.
+                    
+                    BEISPIELE gültiger Nummern:
+                    "MB001", "WI205", "MA101"
+                    
+                    BEISPIELE ungültiger Nummern:
+                    "MB1" (zu kurz), "MB0001" (zu lang), "" (leer)
+                  }
+                  if Length(Nummer) <> 5 then
+                  begin
+                    Writeln('Fehler: Ungültige Veranstaltungsnummer "', Nummer, '" - muss 5 Zeichen haben.');
+                    AllesOk := False;
+                  end
+                  else
+                  begin
+                    {
+                      NOTEN-STRING VALIDIERUNG:
+                      
+                      Note darf nicht leer sein (auch nicht nach dem Doppelpunkt).
+                      
+                      BEISPIELE ungültiger Eingaben:
+                      "MB001:" (Note fehlt komplett)
+                      "MB001: " (nur Leerzeichen - wird hier als leer erkannt)
+                    }
+                    if NotenStr = '' then
+                    begin
+                      Writeln('Fehler: Note fehlt für Veranstaltung "', Nummer, '".');
+                      AllesOk := False;
+                    end
+                    else
+                    begin
+                      {
+                        NOTEN-KONVERTIERUNG:
+                        
+                        StringZuReal() konvertiert "1,7" oder "1.7" zu 1.7
+                        Erfolg gibt an ob die Konvertierung geklappt hat.
+                        
+                        MÖGLICHE FEHLER:
+                        - "abc" (keine Zahl)
+                        - "1.x" (ungültiges Zeichen)
+                        - "" (leer - sollte oben abgefangen werden)
+                        - "1.2.3" (mehrere Dezimalpunkte)
+                      }
+                      Note := StringZuReal(NotenStr, Erfolg);
+                      if not Erfolg then
+                      begin
+                        Writeln('Fehler: Ungültige Note "', NotenStr, '" für Veranstaltung "', Nummer, '".');
+                        AllesOk := False;
+                      end
+                      else
+                      begin
+                        {
+                          LEISTUNG ZUR LISTE HINZUFÜGEN:
+                          
+                          Alle Validierungen bestanden:
+                          1. Nummer hat 5 Zeichen
+                          2. Note ist eine gültige Zahl
+                          3. Zeile hat korrektes Format
+                          
+                          RECORD-AUFBAU:
+                          Leistung.Nummer und Leistung.Note werden gesetzt,
+                          dann wird der komplette Record an die Liste angehängt.
+                        }
+                        Leistung.Nummer := Nummer;
+                        Leistung.Note := Note;
+                        FuegeLeistungHinzu(Leistungen, Leistung);
+                      end;
+                    end;
+                  end;
+                end;
+              end;
+            end;
+          end;
+        end;
+
+      finally
+        {
+          FINALLY-BLOCK - RESOURCE CLEANUP:
+          
+          Wird IMMER ausgeführt, egal ob:
+          - Alles erfolgreich war
+          - Eine Exception aufgetreten ist
+          - AllesOk := False gesetzt wurde
+          
+          Close(Datei) schließt das File-Handle und gibt es frei.
+          
+          WICHTIG: Ohne Close() würde das System das File-Handle
+          beim Programmende automatisch schließen, aber es ist
+          guter Stil und verhindert Resource-Leaks.
+        }
+        Close(Datei);
+      end;
+
+    except
+      {
+        EXCEPTION-BEHANDLUNG:
+        
+        Fängt alle Exceptions die bei Dateizugriffen auftreten können:
+        - EInOutError: Datei kann nicht geöffnet/gelesen werden
+        - EAccessViolation: Zugriffsverletzung
+        - Andere IO-Exceptions
+        
+        GENERISCHER EXCEPT-BLOCK:
+        Wir verwenden 'except' ohne spezifische Exception-Typen.
+        Das fängt alle Exceptions und gibt eine allgemeine Fehlermeldung aus.
+        
+        ROBUSTHEIT:
+        Das Programm stürzt nicht ab, sondern gibt eine Fehlermeldung
+        aus und setzt AllesOk := False.
+      }
+      Writeln('Fehler beim Öffnen oder Lesen der Datei "', Dateiname, '".');
+      AllesOk := False;
+    end;
+  end;
+
+  {
+    FUNKTIONS-RÜCKGABE:
+    
+    Nur wenn AllesOk noch true ist, war alles erfolgreich.
+    Bei jedem Fehler wurde AllesOk auf false gesetzt.
+  }
+  LeseStudentendatei := AllesOk;
+end;
+
+{
+  DATEI-VERARBEITUNG: LeseFachrichtungsdatei
+  
+  Liest eine binäre .sp-Datei (Studienplan) ein.
+  
+  DATEI-FORMAT:
+  Binäre Datei mit aufeinanderfolgenden TVeranstaltung-Records.
+  Jeder Record ist exakt sizeof(TVeranstaltung) = 7 Bytes groß.
+  
+  BEISPIEL "MB.sp":
+  Bytes 0-6:   Erste Veranstaltung (z.B. "MB001", 10 ECTS)
+  Bytes 7-13:  Zweite Veranstaltung (z.B. "MB002", 5 ECTS)
+  Bytes 14-20: Dritte Veranstaltung (z.B. "MB003", 10 ECTS)
+  etc.
+  
+  VORTEILE BINÄRER DATEIEN:
+  - Sehr effizient zu lesen (keine Parsing nötig)
+  - Kompakte Dateigröße
+  - Feste Record-Größe ermöglicht Random Access
+  
+  NACHTEILE:
+  - Nicht human-readable
+  - Plattform-abhängig (Endianness, Alignment)
+  - Schwer zu editieren
+}
+function LeseFachrichtungsdatei(const Fachrichtung: string; var Veranstaltungen: PVeranstaltungNode): Boolean;
+var
+  Datei: file of TVeranstaltung;  // TYPISIERTE DATEI - kann nur TVeranstaltung lesen
+  Veranstaltung: TVeranstaltung;  // Temporärer Record für das Einlesen
+  Pfad: string;                   // Vollständiger Pfad zur .sp Datei
+  AllesOk: Boolean;               // Master-Flag für Fehlerbehandlung
+begin
+  LeseFachrichtungsdatei := False;  // Pessimistische Initialisierung
+  Veranstaltungen := nil;           // Liste startet leer
+  AllesOk := True;
+
+  {
+    PFAD-KONSTRUKTION für .sp-Datei:
+    
+    Fachrichtung "MB" wird zu "MB.sp"
+    Mit vollständigem Pfad: "C:\Student\MB.sp"
+    
+    .sp = Studienplan (eigene Dateierweiterung für unser Format)
+  }
+  Pfad := ExtractFilePath(ParamStr(0)) + Fachrichtung + '.sp';
+
+  {
+    DATEI-EXISTENZ PRÜFUNG:
+    
+    Besonders wichtig für .sp-Dateien, da diese manuell erstellt werden müssen.
+    Jede Fachrichtung braucht ihre eigene .sp-Datei.
+  }
+  if not FileExists(Pfad) then
+  begin
+    Writeln('Fehler: Fachrichtungsdatei "', Fachrichtung, '.sp" existiert nicht.');
+    AllesOk := False;
+  end;
+
+  {
+    BINÄRE DATEI-VERARBEITUNG mit Exception-Handling:
+  }
+  if AllesOk then
+  begin
+    try
+      {
+        TYPISIERTE DATEI-ÖFFNUNG:
+        
+        'file of TVeranstaltung' bedeutet:
+        - Datei kann nur TVeranstaltung-Records enthalten
+        - Read() liest automatisch sizeof(TVeranstaltung) Bytes
+        - Compiler stellt sicher dass Datentypen passen
+        
+        Reset() öffnet zum Lesen (wie bei Text-Dateien).
+      }
+      Assign(Datei, Pfad);
+      Reset(Datei);
+
+      try
+        {
+          ALLE RECORDS EINLESEN:
+          
+          Eof(Datei) bei typisierten Dateien:
+          - True wenn keine vollständigen Records mehr zu lesen sind
+          - False wenn mindestens ein Record verfügbar ist
+          
+          Read(Datei, Veranstaltung):
+          - Liest EXAKT sizeof(TVeranstaltung) Bytes
+          - Interpretiert sie als TVeranstaltung-Record
+          - Schreibt das Ergebnis in die Variable 'Veranstaltung'
+          
+          KEINE PARSING-LOGIK NÖTIG:
+          Im Gegensatz zu Text-Dateien wird nicht geparst.
+          Die Bytes werden direkt als Record-Struktur interpretiert.
+        }
+        while not Eof(Datei) do
+        begin
+          Read(Datei, Veranstaltung);  // Einen kompletten TVeranstaltung-Record lesen
+          
+          {
+            RECORD ZUR LISTE HINZUFÜGEN:
+            
+            Der eingelesene Record wird komplett (7 Bytes) an die Liste angehängt.
+            FuegeVeranstaltungHinzu() kopiert den Record in einen neuen Heap-Knoten.
+          }
+          FuegeVeranstaltungHinzu(Veranstaltungen, Veranstaltung);
+        end;
+
+      finally
+        {
+          DATEI SCHLIESSEN:
+          
+          Auch binäre Dateien müssen ordnungsgemäß geschlossen werden.
+        }
+        Close(Datei);
+      end;
+
+    except
+      {
+        EXCEPTION-BEHANDLUNG:
+        
+        Binäre Dateien können zusätzliche Fehler verursachen:
+        - Datei hat falsche Größe (nicht Vielfaches von sizeof(TVeranstaltung))
+        - Datei ist korrumpiert
+        - Plattform-Inkompatibilität (andere Byte-Reihenfolge)
+      }
+      Writeln('Fehler beim Öffnen oder Lesen der Fachrichtungsdatei "', Fachrichtung, '.sp".');
+      AllesOk := False;
+    end;
+  end;
+
+  LeseFachrichtungsdatei := AllesOk;
+end;
+
+{
+  ALGORITHMUS: BerechneFortschritt
+  
+  Berechnet wie viel Prozent des Studiums der Student bereits abgeschlossen hat.
+  
+  DEFINITION "BESTANDEN":
+  Eine Veranstaltung gilt als bestanden wenn:
+  1. Der Student eine Leistung für diese Veranstaltung erbracht hat
+  2. Die Note ist <= 4.0 (deutsches Notensystem: 1.0-4.0 = bestanden, >4.0 = nicht bestanden)
+  
+  ALGORITHMUS:
+  1. Zähle alle Veranstaltungen der Fachrichtung (Gesamt-Anzahl)
+  2. Für jede Veranstaltung: Suche passende Leistung mit Note <= 4.0
+  3. Berechne Prozentsatz: (Bestandene / Gesamt) * 100
+  
+  ZEITKOMPLEXITÄT: O(n * m)
+  n = Anzahl Veranstaltungen, m = Anzahl Leistungen
+  Für jede Veranstaltung wird die komplette Leistungsliste durchsucht.
+  
+  RÜCKGABE:
+  - Funktions-Rückgabe: Fortschritt in Prozent (0.0 - 100.0)
+  - var BestandeneAnzahl: Anzahl bestandener Veranstaltungen (für Ausgabe)
+}
+function BerechneFortschritt(Leistungen: PLeistungNode; Veranstaltungen: PVeranstaltungNode; var BestandeneAnzahl: Integer): Real;
+var
+  GesamtAnzahl: Integer;                    // Anzahl aller Veranstaltungen der Fachrichtung
+  AktuelleLeistung: PLeistungNode;          // Iterator für die Leistungs-Liste
+  AktuelleVeranstaltung: PVeranstaltungNode; // Iterator für die Veranstaltungs-Liste
+  Gefunden: Boolean;                        // Flag ob passende Leistung gefunden wurde
+begin
+  BestandeneAnzahl := 0;  // Zähler für bestandene Veranstaltungen
+  GesamtAnzahl := 0;      // Zähler für alle Veranstaltungen
+
+  {
+    SCHRITT 1: ALLE VERANSTALTUNGEN ZÄHLEN
+    
+    Durchläuft die komplette Veranstaltungs-Liste einmal
+    und zählt die Gesamtanzahl.
+    
+    LISTE DURCHLAUFEN:
+    - Starte am Listenanfang (Veranstaltungen)
+    - Folge den Next-Zeigern bis nil erreicht wird
+    - Inkrementiere Zähler bei jedem Knoten
+  }
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Inc(GesamtAnzahl);                                      // Eine Veranstaltung mehr
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;   // Zum nächsten Knoten
+  end;
+
+  {
+    SCHRITT 2: BESTANDENE VERANSTALTUNGEN FINDEN
+    
+    Für jede Veranstaltung wird geprüft ob der Student:
+    1. Eine Leistung für diese Veranstaltung hat
+    2. Die Note <= 4.0 ist (bestanden)
+    
+    NESTED LOOP PATTERN:
+    Äußere Schleife: Alle Veranstaltungen
+    Innere Schleife: Alle Leistungen (Suche nach Match)
+  }
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Gefunden := False;                    // Für diese Veranstaltung noch keine passende Leistung gefunden
+    AktuelleLeistung := Leistungen;       // Suche startet am Anfang der Leistungs-Liste
+
+    {
+      INNER LOOP: PASSENDE LEISTUNG SUCHEN
+      
+      Durchsucht die Leistungs-Liste nach einer Leistung die:
+      1. Die gleiche Nummer hat wie die aktuelle Veranstaltung
+      2. Eine bestandene Note hat (Note <= 4.0)
+      
+      VORZEITIGER AUSSTIEG:
+      Sobald eine passende Leistung gefunden wird (Gefunden = True),
+      wird die innere Schleife beendet (Effizienz-Optimierung).
+      
+      WARUM VORZEITIGER AUSSTIEG?
+      Ein Student kann theoretisch mehrmals die gleiche Veranstaltung ablegen.
+      Wir interessieren uns nur dafür OB er sie bestanden hat, nicht wie oft.
+    }
+    while (AktuelleLeistung <> nil) and not Gefunden do
+    begin
+      {
+        MATCHING-BEDINGUNGEN:
+        
+        1. Nummern-Vergleich: AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer
+           Beispiel: "MB001" = "MB001"
+        
+        2. Bestanden-Check: AktuelleLeistung^.Data.Note <= 4.0
+           Deutsches Notensystem: 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0 = bestanden
+           4.3, 4.7, 5.0 = nicht bestanden
+        
+        BEIDE Bedingungen müssen erfüllt sein (AND-Verknüpfung).
+      }
+      if (AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer) and
+         (AktuelleLeistung^.Data.Note <= 4.0) then
+      begin
+        Inc(BestandeneAnzahl);  // Eine bestandene Veranstaltung mehr
+        Gefunden := True;       // Vorzeitiger Ausstieg aus der inneren Schleife
+      end;
+      AktuelleLeistung := AktuelleLeistung^.Next;  // Zum nächsten Leistungs-Knoten
+    end;
+
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;  // Zur nächsten Veranstaltung
+  end;
+
+  {
+    PROZENT-BERECHNUNG:
+    
+    Prozent = (Bestandene / Gesamt) * 100
+    
+    DIVISION-DURCH-NULL SCHUTZ:
+    Wenn GesamtAnzahl = 0 (keine Veranstaltungen in der Fachrichtung),
+    würde eine Division durch 0 einen Runtime-Error verursachen.
+    
+    GLEITKOMMA-DIVISION:
+    BestandeneAnzahl und GesamtAnzahl sind Integer,
+    aber das Ergebnis soll Real sein.
+    Pascal führt automatisch Typ-Konvertierung durch wenn nötig.
+  }
+  if GesamtAnzahl > 0 then
+    BerechneFortschritt := (BestandeneAnzahl / GesamtAnzahl) * 100
+  else
+    BerechneFortschritt := 0;  // Sicherer Default-Wert
+end;
+
+{
+  ALGORITHMUS: BerechneGesamtnote
+  
+  Berechnet die gewichtete Durchschnittsnote basierend auf ECTS-Punkten.
+  
+  GEWICHTUNG NACH ECTS:
+  Veranstaltungen mit mehr ECTS-Punkten haben größeren Einfluss auf die Gesamtnote.
+  
+  FORMEL:
+  Gesamtnote = Σ(Note × ECTS) / Σ(ECTS)
+  
+  BEISPIEL:
+  - Mathe (10 ECTS): Note 2.0 → 2.0 × 10 = 20.0 Gewichtspunkte
+  - Englisch (5 ECTS): Note 1.0 → 1.0 × 5 = 5.0 Gewichtspunkte
+  - Physik (10 ECTS): Note 3.0 → 3.0 × 10 = 30.0 Gewichtspunkte
+  
+  Gesamtnote = (20.0 + 5.0 + 30.0) / (10 + 5 + 10) = 55.0 / 25 = 2.2
+  
+  OHNE GEWICHTUNG wäre es: (2.0 + 1.0 + 3.0) / 3 = 2.0
+  MIT GEWICHTUNG ist es: 2.2 (Physik mit schlechter Note zieht stärker runter)
+  
+  ALGORITHMUS:
+  Für jede Veranstaltung wird geprüft ob der Student eine Leistung hat.
+  Wenn ja: Note × ECTS wird zu GesamtPunkte addiert, ECTS zu GesamtECTS.
+  Am Ende: GesamtPunkte / GesamtECTS = gewichtete Durchschnittsnote.
+}
+function BerechneGesamtnote(Leistungen: PLeistungNode; Veranstaltungen: PVeranstaltungNode): Real;
+var
+  GesamtPunkte: Real;                       // Summe aller (Note × ECTS)
+  GesamtECTS: Integer;                      // Summe aller ECTS-Punkte
+  AktuelleLeistung: PLeistungNode;          // Iterator für Leistungs-Liste
+  AktuelleVeranstaltung: PVeranstaltungNode; // Iterator für Veranstaltungs-Liste
+  Gefunden: Boolean;                        // Flag ob passende Leistung gefunden
+begin
+  GesamtPunkte := 0;  // Gewichtete Noten-Summe
+  GesamtECTS := 0;    // ECTS-Summe
+
+  {
+    GEWICHTETE SUMME BERECHNEN:
+    
+    Gleicher Nested-Loop Algorithmus wie in BerechneFortschritt(),
+    aber diesmal sammeln wir gewichtete Noten statt zu zählen.
+    
+    WICHTIGER UNTERSCHIED:
+    Hier interessieren uns ALLE Leistungen (auch nicht-bestandene),
+    weil auch schlechte Noten in die Gesamtnote einfließen.
+    BerechneFortschritt() berücksichtigt nur bestandene Leistungen.
+  }
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Gefunden := False;
+    AktuelleLeistung := Leistungen;
+
+    {
+      PASSENDE LEISTUNG SUCHEN:
+      
+      Sucht eine Leistung mit der gleichen Nummer wie die aktuelle Veranstaltung.
+      KEIN Note <= 4.0 Check, weil auch schlechte Noten zählen.
+    }
+    while (AktuelleLeistung <> nil) and not Gefunden do
+    begin
+      if AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer then
+      begin
+        {
+          GEWICHTUNG ANWENDEN:
+          
+          GesamtPunkte += Note × ECTS
+          GesamtECTS += ECTS
+          
+          BEISPIEL:
+          Note = 2.5, ECTS = 10
+          GesamtPunkte += 2.5 × 10 = 25.0
+          GesamtECTS += 10
+          
+          GLEITKOMMA-ARITHMETIK:
+          AktuelleLeistung^.Data.Note ist Real
+          AktuelleVeranstaltung^.Data.ECTS ist Byte (wird automatisch zu Real konvertiert)
+          Ergebnis der Multiplikation ist Real
+        }
+        GesamtPunkte := GesamtPunkte + (AktuelleLeistung^.Data.Note * AktuelleVeranstaltung^.Data.ECTS);
+        GesamtECTS := GesamtECTS + AktuelleVeranstaltung^.Data.ECTS;
+        Gefunden := True;  // Vorzeitiger Ausstieg
+      end;
+      AktuelleLeistung := AktuelleLeistung^.Next;
+    end;
+
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
+  end;
+
+  {
+    DURCHSCHNITT BERECHNEN:
+    
+    Gewichteter Durchschnitt = GesamtPunkte / GesamtECTS
+    
+    DIVISION-DURCH-NULL SCHUTZ:
+    Wenn der Student noch gar keine Leistungen erbracht hat,
+    wäre GesamtECTS = 0 und Division würde Runtime-Error verursachen.
+  }
+  if GesamtECTS > 0 then
+    BerechneGesamtnote := GesamtPunkte / GesamtECTS
+  else
+    BerechneGesamtnote := 0;  // Default wenn keine Leistungen vorhanden
+end;
+
+{
+  DATEI-AUSGABE: SchreibeZeugnisdatei
+  
+  Erstellt eine Zeugnis-Datei wenn der Student alle Veranstaltungen bestanden hat.
+  
+  ZEUGNIS-FORMAT:
+  Zeile 1: Name des Studenten
+  Zeile 2: Leerzeile
+  Zeile 3+: Alle Veranstaltungen mit Noten im Format "NUMMER:NOTE"
+  Letzte Zeilen: Leerzeile + "Gesamtnote: X.XX"
+  
+  BEISPIEL-ZEUGNIS "Zeugnis_Max Mustermann.txt":
+  Max Mustermann
+  
+  MB001:1.50
+  MB002:2.00
+  MB003:1.70
+  
+  Gesamtnote: 1.73
+  
+  VORBEDINGUNGEN:
+  - Student muss einen gültigen Namen haben (nicht leer/whitespace)
+  - Alle Veranstaltungen müssen bestanden sein (wird vor Aufruf geprüft)
+  
+  WARUM NAME-VALIDIERUNG?
+  Zeugnis ohne Namen wäre nicht aussagekräftig.
+  Außerdem wird der Name im Dateinamen verwendet.
+}
+function SchreibeZeugnisdatei(const Name: string; Leistungen: PLeistungNode; Veranstaltungen: PVeranstaltungNode): Boolean;
+var
+  Datei: Text;                              // Text-Datei Handle für Zeugnis
+  Pfad: string;                             // Vollständiger Pfad zur Zeugnis-Datei
+  AktuelleVeranstaltung: PVeranstaltungNode; // Iterator für Veranstaltungs-Liste
+  AktuelleLeistung: PLeistungNode;          // Iterator für Leistungs-Liste
+  Gefunden: Boolean;                        // Flag ob passende Leistung gefunden
+  Gesamtnote: Real;                         // Berechnete gewichtete Gesamtnote
+  AllesOk: Boolean;                         // Master-Flag für Fehlerbehandlung
+begin
+  SchreibeZeugnisdatei := False;  // Pessimistische Initialisierung
+  AllesOk := True;
+
+  {
+    NAME-VALIDIERUNG:
+    
+    Ein Zeugnis ohne Namen oder nur mit Whitespace ist nicht sinnvoll.
+    
+    IstLeerOderWhitespace() prüft:
+    - Komplett leerer String: ""
+    - Nur Leerzeichen: "   "
+    - Nur Tabs/Zeilenwechsel: "\t\n"
+    - Kombinationen: " \t \n "
+    
+    BEISPIELE ungültiger Namen:
+    "", "   ", "\t", "\n", " \t\n "
+    
+    BEISPIELE gültiger Namen:
+    "Max", "Max Mustermann", "Dr. Anna Schmidt-Weber"
+  }
+  if IstLeerOderWhitespace(Name) then
+  begin
+    Writeln('Fehler: Kein gültiger Name vorhanden - Zeugnis kann nicht erstellt werden.');
+    AllesOk := False;
+  end;
+
+  {
+    ZEUGNIS-DATEI ERSTELLEN:
+    
+    Nur wenn der Name gültig ist, versuchen wir das Zeugnis zu erstellen.
+  }
+  if AllesOk then
+  begin
+    {
+      DATEINAME-KONSTRUKTION:
+      
+      Format: "Zeugnis_[Name].txt"
+      
+      BEISPIELE:
+      Name = "Max Mustermann" → "Zeugnis_Max Mustermann.txt"
+      Name = "Anna Schmidt" → "Zeugnis_Anna Schmidt.txt"
+      
+      POTENTIELLE PROBLEME:
+      - Namen mit ungültigen Dateinamen-Zeichen: < > : " | ? * \
+      - Sehr lange Namen (Windows: max 255 Zeichen)
+      - Namen mit Umlauten (Encoding-Probleme)
+      
+      VEREINFACHUNG:
+      Wir nehmen an dass die Namen dateinamen-kompatibel sind.
+      Produktive Software würde ungültige Zeichen ersetzen.
+    }
+    Pfad := ExtractFilePath(ParamStr(0)) + 'Zeugnis_' + Name + '.txt';
+
+    {
+      DATEI-ERSTELLUNG mit Exception-Handling:
+    }
+    try
+      {
+        TEXT-DATEI ZUM SCHREIBEN ÖFFNEN:
+        
+        Assign(Datei, Pfad): Verknüpft File-Handle mit Pfad
+        Rewrite(Datei): Erstellt neue Datei (überschreibt existierende!)
+        
+        REWRITE vs APPEND:
+        - Rewrite(): Erstellt neue Datei, löscht existierende
+        - Append(): Hängt an existierende Datei an
+        
+        Wir verwenden Rewrite() weil wir ein neues Zeugnis schreiben wollen.
+      }
+      Assign(Datei, Pfad);
+      Rewrite(Datei);
+
+      try
+        {
+          ZEUGNIS-KOPF SCHREIBEN:
+          
+          Name als Überschrift, dann Leerzeile für bessere Lesbarkeit.
+          
+          WRITELN vs WRITE:
+          - Writeln(): Schreibt Text + Zeilenendezeichen
+          - Write(): Schreibt nur Text, bleibt auf der gleichen Zeile
+          
+          Writeln(Datei, '') schreibt nur ein Zeilenendezeichen (Leerzeile).
+        }
+        Writeln(Datei, Name);    // Name als Überschrift
+        Writeln(Datei, '');      // Leerzeile für Formatierung
+
+        {
+          ALLE VERANSTALTUNGEN MIT NOTEN AUSGEBEN:
+          
+          Durchläuft alle Veranstaltungen und sucht die passenden Leistungen.
+          
+          WICHTIG: Nur Veranstaltungen mit Leistungen werden ausgegeben.
+          Das sollte alle sein, da das Zeugnis nur bei 100% Fortschritt erstellt wird.
+          
+          REIHENFOLGE:
+          Die Reihenfolge hängt von der Einfüge-Reihenfolge in die Listen ab.
+          Für ein professionelles Zeugnis würde man sortieren (z.B. nach Nummer).
+        }
+        AktuelleVeranstaltung := Veranstaltungen;
+        while AktuelleVeranstaltung <> nil do
+        begin
+          Gefunden := False;
+          AktuelleLeistung := Leistungen;
+
+          {
+            PASSENDE LEISTUNG SUCHEN:
+            
+            Für jede Veranstaltung wird die passende Leistung gesucht.
+            
+            ANNAHME: Es gibt für jede Veranstaltung eine Leistung,
+            da das Zeugnis nur bei vollständigem Abschluss erstellt wird.
+          }
+          while (AktuelleLeistung <> nil) and not Gefunden do
+          begin
+            if AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer then
+            begin
+              {
+                VERANSTALTUNG MIT NOTE AUSGEBEN:
+                
+                Format: "NUMMER:NOTE" (z.B. "MB001:1.50")
+                
+                RealZuStringMitZweiStellen() formatiert die Note mit genau 2 Nachkommastellen.
+                Dadurch sehen alle Noten einheitlich aus: 1.50, 2.00, 2.33
+                
+                WRITELN-VERKETTUNG:
+                Pascal erlaubt mehrere Parameter für Writeln():
+                Writeln(Datei, Teil1, Teil2, Teil3)
+                ist effizienter als drei separate Writeln()-Aufrufe.
+              }
+              Writeln(Datei, AktuelleLeistung^.Data.Nummer, ':', RealZuStringMitZweiStellen(AktuelleLeistung^.Data.Note));
+              Gefunden := True;  // Vorzeitiger Ausstieg
+            end;
+            AktuelleLeistung := AktuelleLeistung^.Next;
+          end;
+
+          AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
+        end;
+
+        {
+          GESAMTNOTE ANHÄNGEN:
+          
+          Leerzeile + "Gesamtnote: X.XX" als Abschluss des Zeugnisses.
+          
+          BerechneGesamtnote() wird hier erneut aufgerufen.
+          Effizienter wäre es, das Ergebnis zu übergeben,
+          aber für die Klarheit des Codes ist es ok.
+        }
+        Gesamtnote := BerechneGesamtnote(Leistungen, Veranstaltungen);
+        Writeln(Datei, '');                                                    // Leerzeile
+        Writeln(Datei, 'Gesamtnote: ', RealZuStringMitZweiStellen(Gesamtnote)); // Gesamtnote formatiert
+
+      finally
+        {
+          DATEI SCHLIESSEN:
+          
+          Sehr wichtig bei Schreib-Operationen!
+          Ohne Close() könnten Daten im Puffer bleiben und nicht geschrieben werden.
+          
+          WRITE-PUFFER:
+          Das Betriebssystem puffert Schreib-Operationen für Effizienz.
+          Close() stellt sicher dass alle gepufferten Daten geschrieben werden.
+        }
+        Close(Datei);
+      end;
+
+    except
+      {
+        EXCEPTION-BEHANDLUNG:
+        
+        Mögliche Fehler beim Schreiben:
+        - Festplatte voll
+        - Keine Schreibberechtigung im Verzeichnis
+        - Dateiname ungültig (ungültige Zeichen)
+        - Datei ist gesperrt von anderem Programm
+        
+        BENUTZERFREUNDLICHE FEHLERMELDUNG:
+        Allgemeine Meldung ohne technische Details.
+      }
+      Writeln('Fehler beim Erstellen oder Schreiben der Zeugnisdatei.');
+      AllesOk := False;
+    end;
+  end;
+
+  SchreibeZeugnisdatei := AllesOk;
+end;
+
+{
+  =============================================================================
+  HAUPTPROGRAMM - PROGRAMMABLAUF UND KOORDINATION
+  =============================================================================
+  
+  Das Hauptprogramm koordiniert alle Komponenten und steuert den Programmablauf:
+  1. Initialisierung
+  2. Benutzer-Eingabe
+  3. Datei-Verarbeitung
+  4. Berechnungen
+  5. Ausgabe/Zeugnis-Erstellung
+  6. Cleanup
+  
+  FEHLERBEHANDLUNG-STRATEGIE:
+  Hierarchische Fehlerbehandlung mit Früh-Ausstieg bei Fehlern.
+  Jeder Schritt wird nur ausgeführt wenn der vorherige erfolgreich war.
+}
+
+{
+  GLOBALE VARIABLEN des Hauptprogramms:
+  
+  Diese Variablen sind im Hauptprogramm-Block lokal,
+  aber für alle Hauptprogramm-Operationen verfügbar.
+}
+var
+  Dateiname: string;                        // Vom Benutzer eingegebener Dateiname
+  Name, Fachrichtung: string;               // Aus der Studentendatei gelesene Daten
+  Leistungen: PLeistungNode;                // Verkettete Liste aller Studentenleistungen
+  Veranstaltungen: PVeranstaltungNode;      // Verkettete Liste aller Fachrichtungs-Veranstaltungen
+  Fortschritt: Real;                        // Berechneter Studienfortschritt in Prozent
+  BestandeneAnzahl: Integer;                // Anzahl bestandener Veranstaltungen
+  StudentenDateiOk: Boolean;                // Status der Studentendatei-Verarbeitung
+  FachrichtungsDateiOk: Boolean;            // Status der Fachrichtungsdatei-Verarbeitung
+
+{
+  HAUPT-PROGRAMMBLOCK:
+  
+  Der eigentliche Programmablauf zwischen 'begin' und 'end.'
+}
+begin
+  {
+    ==========================================================================
+    PHASE 1: INITIALISIERUNG
+    ==========================================================================
+    
+    Alle Variablen werden auf sichere Start-Werte gesetzt.
+    Besonders wichtig für Pointer (nil) und Zähler (0).
+  }
+  
+  {
+    SPEICHER-DEBUGGING INITIALISIERUNG:
+    
+    SpeicherZaehler startet bei 0.
+    Bei jedem New(): +1, bei jedem Dispose(): -1
+    Am Ende sollte er wieder 0 sein.
+  }
+  SpeicherZaehler := 0;
+  
+  {
+    LISTEN-INITIALISIERUNG:
+    
+    Beide Listen starten als leer (nil = leere Liste).
+    
+    WICHTIG: nil-Initialisierung verhindert Zugriffe auf undefinierten Speicher.
+    Ohne Initialisierung könnten die Pointer auf zufällige Speicheradressen zeigen.
+  }
+  Leistungen := nil;
+  Veranstaltungen := nil;
+
+  {
+    ==========================================================================
+    PHASE 2: BENUTZER-EINGABE
+    ==========================================================================
+    
+    Benutzer wird nach dem Dateinamen gefragt.
+    
+    BENUTZER-INTERFACE:
+    Einfache Konsolen-Eingabe mit Write() + Readln().
+    
+    Write() vs Writeln():
+    Write() schreibt ohne Zeilenwechsel, Cursor bleibt in der gleichen Zeile.
+    Dadurch kann der Benutzer direkt nach dem Text eingeben.
+  }
+  Write('Bitte geben Sie den Dateinamen ein (inkl. Endung): ');
+  Readln(Dateiname);  // Liest komplette Zeile bis Enter-Taste
+
+  {
+    ==========================================================================
+    PHASE 3: DATEI-VERARBEITUNG
+    ==========================================================================
+    
+    Hierarchische Verarbeitung mit Früh-Ausstieg bei Fehlern:
+    1. Studentendatei lesen
+    2. Nur bei Erfolg: Fachrichtungsdatei lesen
+    3. Nur bei Erfolg: Berechnungen und Ausgabe
+    
+    WARUM HIERARCHISCH?
+    Ohne Studentendaten können wir keine Fachrichtung ermitteln.
+    Ohne Fachrichtungsdaten können wir keinen Fortschritt berechnen.
+  }
+  
+  {
+    STUDENTENDATEI-VERARBEITUNG:
+    
+    LeseStudentendatei() liest Name, Fachrichtung und alle Leistungen.
+    Gibt true zurück wenn alles erfolgreich war.
+    
+    BEI ERFOLG: Name, Fachrichtung und Leistungen sind gefüllt
+    BEI FEHLER: Fehlermeldung wurde bereits ausgegeben, AllesOk = false
+  }
+  StudentenDateiOk := LeseStudentendatei(Dateiname, Name, Fachrichtung, Leistungen);
+
+  {
+    HIERARCHISCHE FEHLERBEHANDLUNG:
+    
+    Nur wenn die Studentendatei erfolgreich gelesen wurde,
+    versuchen wir die Fachrichtungsdatei zu lesen.
+    
+    IF-VERSCHACHTELUNG statt AND-Verknüpfung:
+    Dadurch werden die Fehlermeldungen spezifischer und
+    der Code ist besser lesbar/debugbar.
+  }
+  if StudentenDateiOk then
+  begin
+    {
+      FACHRICHTUNGSDATEI-VERARBEITUNG:
+      
+      Verwendet die aus der Studentendatei gelesene Fachrichtung
+      um die passende .sp-Datei zu finden und zu lesen.
+      
+      BEISPIEL:
+      Fachrichtung = "MB" → liest "MB.sp"
+      Fachrichtung = "WI" → liest "WI.sp"
+    }
+    FachrichtungsDateiOk := LeseFachrichtungsdatei(Fachrichtung, Veranstaltungen);
+
+    {
+      WEITERE HIERARCHISCHE VERSCHACHTELUNG:
+      
+      Nur wenn beide Dateien erfolgreich gelesen wurden,
+      können wir Berechnungen durchführen und Ausgaben machen.
+    }
+    if FachrichtungsDateiOk then
+    begin
+      {
+        =======================================================================
+        PHASE 4: BERECHNUNGEN UND AUSGABE
+        =======================================================================
+      }
+      
+      {
+        FORTSCHRITT BERECHNEN:
+        
+        BerechneFortschritt() vergleicht Studentenleistungen mit Veranstaltungsanforderungen.
+        
+        RÜCKGABE-WERTE:
+        - Funktions-Rückgabe: Fortschritt in Prozent (Real)
+        - var BestandeneAnzahl: Anzahl bestandener Veranstaltungen (Integer)
+        
+        BEISPIEL-BERECHNUNG:
+        5 Veranstaltungen insgesamt, 3 bestanden → 60% Fortschritt
+      }
+      Fortschritt := BerechneFortschritt(Leistungen, Veranstaltungen, BestandeneAnzahl);
+
+      {
+        FORTSCHRITT-AUSGABE:
+        
+        Round(Fortschritt) rundet auf ganze Prozent.
+        
+        WARUM RUNDEN?
+        Für Benutzer sind ganze Prozent verständlicher als 67.3333%.
+        
+        AUSGABE-FORMAT:
+        "67% bei 3 bestandenen Leistungen"
+        
+        WARUM BEIDE WERTE?
+        Prozent zeigt relativen Fortschritt, Anzahl zeigt absoluten Fortschritt.
+        Beides zusammen gibt vollständiges Bild.
+      }
+      Writeln(Round(Fortschritt), '% bei ', BestandeneAnzahl, ' bestandenen Leistungen');
+
+      {
+        =======================================================================
+        PHASE 5: ZEUGNIS-ERSTELLUNG (nur bei 100% Fortschritt)
+        =======================================================================
+        
+        BEDINGUNG für Zeugnis:
+        Round(Fortschritt) = 100
+        
+        WARUM Round()?
+        Bei Gleitkomma-Arithmetik könnte Fortschritt 99.9999999 sein,
+        was praktisch 100% entspricht aber nicht exakt 100.0 ist.
+        Round() löst diese Ungenauigkeiten.
+        
+        BEISPIEL-SZENARIEN:
+        Fortschritt = 100.0 → Round(100.0) = 100 → Zeugnis erstellen
+        Fortschritt = 99.999 → Round(99.999) = 100 → Zeugnis erstellen  
+        Fortschritt = 99.4 → Round(99.4) = 99 → KEIN Zeugnis
+      }
+      if Round(Fortschritt) = 100 then
+      begin
+        {
+          ZEUGNIS-ERSTELLUNG mit Erfolgs-Meldung:
+          
+          SchreibeZeugnisdatei() erstellt die Zeugnis-Datei.
+          Gibt true zurück wenn erfolgreich.
+          
+          ERFOLGS-/FEHLER-BEHANDLUNG:
+          Bei Erfolg: Erfolgs-Meldung mit Dateinamen
+          Bei Fehler: Allgemeine Fehler-Meldung (Details wurden in der Funktion ausgegeben)
+        }
+        if SchreibeZeugnisdatei(Name, Leistungen, Veranstaltungen) then
+          Writeln('Zeugnis wurde erfolgreich erstellt: Zeugnis_', Name, '.txt')
+        else
+          Writeln('Fehler beim Erstellen des Zeugnisses.');
+      end;
+      {
+        HINWEIS: Kein 'else' für < 100% Fortschritt
+        
+        Wenn der Student noch nicht fertig ist, wird einfach kein Zeugnis erstellt.
+        Das ist normales Verhalten, keine Fehlermeldung nötig.
+      }
+    end
+    else
+    begin
+      {
+        FEHLERBEHANDLUNG: Fachrichtungsdatei konnte nicht gelesen werden
+        
+        BENUTZER-FREUNDLICHKEIT:
+        "Drücken Sie eine beliebige Taste" verhindert dass das Programm
+        sofort schließt und der Benutzer die Fehlermeldung nicht lesen kann.
+        
+        KONSOLEN-PROGRAMME:
+        Ohne Readln() würde das Konsolen-Fenster sofort schließen
+        und der Benutzer könnte die Meldung nicht lesen.
+      }
+      Writeln('Druecken Sie eine beliebige Taste zum Beenden...');
+      Readln;  // Wartet auf Enter-Taste
+    end;
+  end
+  else
+  begin
+    {
+      FEHLERBEHANDLUNG: Studentendatei konnte nicht gelesen werden
+      
+      Identisch zur Fachrichtungsdatei-Fehlerbehandlung.
+    }
+    Writeln('Druecken Sie eine beliebige Taste zum Beenden...');
+    Readln;
+  end;
+
+  {
+    ==========================================================================
+    PHASE 6: CLEANUP UND SPEICHER-FREIGABE
+    ==========================================================================
+    
+    WICHTIG: Cleanup wird IMMER ausgeführt!
+    Egal ob das Programm erfolgreich oder mit Fehlern beendet wird.
+    
+    RESOURCE LEAKS verhindern:
+    Jeder New()-Aufruf muss durch einen Dispose()-Aufruf ausgeglichen werden.
+    Unsere GibXXXWiederFrei()-Prozeduren machen das automatisch.
+  }
+  
+  {
+    LISTEN-CLEANUP:
+    
+    Beide Listen werden komplett geleert und aller Speicher freigegeben.
+    
+    REIHENFOLGE ist egal:
+    Die Listen sind unabhängig voneinander.
+    
+    SICHERHEIT:
+    Die Prozeduren können auch mit leeren Listen (nil) aufgerufen werden.
+    Sie prüfen intern ob Liste != nil ist.
+  }
+  GibLeistungslisteWiederFrei(Leistungen);      // Alle Leistungs-Knoten freigeben
+  GibVeranstaltungslisteWiederFrei(Veranstaltungen);  // Alle Veranstaltungs-Knoten freigeben
+
+  {
+    SPEICHER-DEBUGGING - LEAK-ERKENNUNG:
+    
+    Der SpeicherZaehler sollte jetzt wieder 0 sein.
+    
+    MÖGLICHE ZÄHLER-WERTE:
+    0: Perfekt! Alle New() durch Dispose() ausgeglichen
+    > 0: SPEICHERLECK! Mehr New() als Dispose() aufgerufen
+    < 0: DOPPELTER DISPOSE! Mehr Dispose() als New() aufgerufen (sehr gefährlich!)
+    
+    WARUM WARNUNG AUSGEBEN?
+    In der Entwicklung hilft es Speicher-Bugs zu finden.
+    Produktive Software würde das nicht ausgeben.
+  }
+  if SpeicherZaehler <> 0 then
+    Writeln('WARNUNG: Speicherleck entdeckt! Zählerstand: ', SpeicherZaehler);
+
+  {
+    PROGRAMM-ENDE:
+    
+    Informative Meldung für den Benutzer.
+    Readln() verhindert dass das Konsolen-Fenster sofort schließt.
+    
+    BENUTZER-ERFAHRUNG:
+    Der Benutzer kann die Ausgaben in Ruhe lesen bevor das Programm beendet wird.
+  }
+  Writeln('Programm beendet.');
+  readln;  // Warten auf Benutzereingabe vor Programmende
+  
+{
+  PROGRAMM-ENDE-MARKIERUNG:
+  
+  'end.' (mit Punkt) markiert das Ende des Hauptprogramms.
+  
+  UNTERSCHIED zu 'end;':
+  - 'end;' beendet Prozeduren, Funktionen, begin-end Blöcke
+  - 'end.' beendet das komplette Programm
+}
+end.
