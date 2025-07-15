@@ -1,4 +1,5 @@
 program aufgabe10;
+//implizierte string umwandlung bekommen wir nicht weg. Frage in der Abgabe!
 // FERTIG Gleitkommazahlen runden auf int zahlen zum überprüfen
 // FERTIG Dateien ohne Studentennamen soll kein Zeugnis erstellt werden
 // FERTIG try/except für Dateizugriff statt IOResult
