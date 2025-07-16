@@ -1,0 +1,647 @@
+program aufgabe10;
+//implizierte string umwandlung bekommen wir nicht weg. Frage in der Abgabe!
+// FERTIG Gleitkommazahlen runden auf int zahlen zum überprüfen
+// FERTIG Dateien ohne Studentennamen soll kein Zeugnis erstellt werden
+// FERTIG try/except für Dateizugriff statt IOResult
+// dieses programm liest studentendaten und fachrichtungsdaten ein,
+// berechnet den fortschritt und erstellt ggf. ein zeugnis
+// es arbeitet mit verketteten listen und achtet auf speicherverwaltung
+
+{$APPTYPE CONSOLE}
+{$R+,Q+,X-}
+
+uses
+  System.SysUtils;
+
+type
+  // hier speichern wir die daten einer veranstaltung aus der .sp datei
+  // nummer ist sowas wie "MB001", also ein code für die veranstaltung
+  // ects gibt an, wie viele punkte die veranstaltung wert ist (z.b. 5 oder 10)
+  TVeranstaltung = record
+    Nummer: string[5];    // z.b. "MB001"
+    ECTS: Byte;           // 5 oder 10 punkte
+  end;
+
+  // das ist für eine einzelne leistung vom studenten
+  // nummer ist wieder der veranstaltungscode, note ist die note (z.b. 1.7)
+  TLeistung = record
+    Nummer: string[5];    // welche veranstaltung
+    Note: Real;           // welche note bekommen
+  end;
+
+  // pointer für die listen - brauchen wir für die verkettete liste
+  // das ist quasi ein "kettenglied" für die veranstaltungen
+  PVeranstaltungNode = ^TVeranstaltungNode;
+  TVeranstaltungNode = record
+    Data: TVeranstaltung;      // die eigentlichen daten
+    Next: PVeranstaltungNode;  // zeigt auf das nächste element in der liste
+  end;
+
+  // das gleiche für die leistungen
+  PLeistungNode = ^TLeistungNode;
+  TLeistungNode = record
+    Data: TLeistung;           // daten zur leistung
+    Next: PLeistungNode;       // zeigt auf das nächste element
+  end;
+
+var
+  SpeicherZaehler: Integer;   // zählt new/dispose für speichercheck, damit wir sehen ob wir speicher vergessen haben
+
+// hängt eine neue veranstaltung an den anfang der liste
+// das ist wie ein stapel: das neue element kommt immer oben drauf
+procedure FuegeVeranstaltungHinzu(var Liste: PVeranstaltungNode; Veranstaltung: TVeranstaltung);
+var
+  NeuerKnoten: PVeranstaltungNode;
+begin
+  New(NeuerKnoten);                    // speicher reservieren für das neue element
+  Inc(SpeicherZaehler);                // zähler erhöhen, weil wir speicher belegen
+  NeuerKnoten^.Data := Veranstaltung;  // daten in den neuen knoten schreiben
+  NeuerKnoten^.Next := Liste;          // der neue knoten zeigt auf das bisherige listen-anfang
+  Liste := NeuerKnoten;                // listenkopf zeigt jetzt auf den neuen knoten
+end;
+
+// macht das gleiche für leistungen
+procedure FuegeLeistungHinzu(var Liste: PLeistungNode; Leistung: TLeistung);
+var
+  NeuerKnoten: PLeistungNode;
+begin
+  New(NeuerKnoten);                // neuen speicher holen für das neue element
+  Inc(SpeicherZaehler);            // speicherzähler erhöhen
+  NeuerKnoten^.Data := Leistung;   // daten rein
+  NeuerKnoten^.Next := Liste;      // vorne dran hängen
+  Liste := NeuerKnoten;            // listenkopf zeigt jetzt auf das neue element
+end;
+
+// räumt die veranstaltungsliste komplett auf
+// geht die liste durch und gibt jedes element wieder frei
+procedure GibVeranstaltungslisteWiederFrei(var Liste: PVeranstaltungNode);
+var
+  Aktuell, Naechster: PVeranstaltungNode;
+begin
+  Aktuell := Liste;
+  // gehen durch alle elemente und löschen sie
+  while Aktuell <> nil do
+  begin
+    Naechster := Aktuell^.Next;  // merken wo's weitergeht
+    Dispose(Aktuell);            // aktuelles element löschen (speicher freigeben)
+    Dec(SpeicherZaehler);        // zähler anpassen, weil wir speicher freigeben
+    Aktuell := Naechster;        // zum nächsten element
+  end;
+  Liste := nil;  // liste ist jetzt leer
+end;
+
+// gleiches für leistungen
+procedure GibLeistungslisteWiederFrei(var Liste: PLeistungNode);
+var
+  Aktuell, Naechster: PLeistungNode;
+begin
+  Aktuell := Liste;
+  // alle elemente durchgehen und freigeben
+  while Aktuell <> nil do
+  begin
+    Naechster := Aktuell^.Next;   // nächstes element merken
+    Dispose(Aktuell);             // aktuelles löschen
+    Dec(SpeicherZaehler);         // speicherzähler runter
+    Aktuell := Naechster;         // weiter zum nächsten
+  end;
+  Liste := nil;   // liste auf leer setzen
+end;
+
+// wandelt einen string in eine zahl um, kann auch kommas
+// gibt true zurück, wenn es geklappt hat, sonst false
+function StringZuReal(const S: string; var Erfolg: Boolean): Real;
+var
+  Code: Integer;
+  Wert: Real;
+  TempStr: string;
+  i: Integer;
+begin
+  TempStr := S;
+
+  // kommas durch punkte ersetzen, weil pascal das so will
+  for i := 1 to Length(TempStr) do
+  begin
+    if TempStr[i] = ',' then
+      TempStr[i] := '.';
+  end;
+
+  // jetzt versuchen zu konvertieren
+  //Val wandelt string in zahl um
+  Val(TempStr, Wert, Code); // val gibt code=0 zurück, wenn alles ok
+  if Code = 0 then
+  begin
+    StringZuReal := Wert;     // hat geklappt
+    Erfolg := True;
+  end
+  else
+  begin
+    StringZuReal := 0;        // fehler, default wert
+    Erfolg := False;
+  end;
+end;
+
+// macht aus einer zahl einen string mit genau 2 nachkommastellen
+// z.b. 1.234 wird zu "1.23"
+function RealZuStringMitZweiStellen(Wert: Real): string;
+var
+  TempStr: string;
+begin
+  // Str wandelt nummerische werte in strings um
+  Str(Wert:0:2, TempStr);  // :0:2 bedeutet 2 nachkommastellen
+  RealZuStringMitZweiStellen := TempStr;
+end;
+
+// prüft ob ein string leer oder nur leerzeichen enthält
+// gibt true zurück, wenn der string komplett leer ist oder nur aus leerzeichen besteht
+function IstLeerOderWhitespace(const S: string): Boolean;
+var
+  i: Integer;
+  IstLeer: Boolean;
+  WeiterSuchen: Boolean;
+begin
+  IstLeer := True;
+  WeiterSuchen := True;
+
+  // wenn string leer ist, dann ist er leer
+  if Length(S) > 0 then
+  begin
+    i := 1; //zählervariable
+    // alle zeichen durchgehen solange wir noch suchen
+    while (i <= Length(S)) and WeiterSuchen do
+    begin
+      // wenn wir ein zeichen finden das kein leerzeichen ist
+      //kein Tabulator (#9), kein Wagenrücklauf (#13) und kein Zeilenumbruch (#10) ist.
+      if (S[i] <> ' ') and (S[i] <> #9) and (S[i] <> #13) and (S[i] <> #10) then
+      begin
+      // dann ist der string nicht leer
+        IstLeer := False;
+        WeiterSuchen := False;
+      end;
+      //erhöht den Zähler, um zum nächsten Zeichen zu gehen
+      Inc(i);
+    end;
+  end;
+
+  IstLeerOderWhitespace := IstLeer;
+end;
+
+// liest eine studentendatei ein und packt alles in listen
+// gibt true zurück, wenn alles geklappt hat
+// liest name, fachrichtung und alle leistungen ein
+function LeseStudentendatei(const Dateiname: string; var Name, Fachrichtung: string; var Leistungen: PLeistungNode): Boolean;
+var
+  Datei: Text; //kein string sondern eine Datei die man dann lesen kann,bzw öffnen kann
+  Zeile: string;
+  DoppelpunktPos: Integer;
+  Nummer: string;
+  NotenStr: string;
+  Note: Real;
+  Leistung: TLeistung;
+  Pfad: string;
+  Erfolg: Boolean;
+  AllesOk: Boolean;
+begin
+  // erstmal alles auf fehler setzen
+  LeseStudentendatei := False;
+  Leistungen := nil;
+  AllesOk := True;
+  Name := '';
+  Fachrichtung := '';
+
+  // vollständigen pfad zusammenbauen (damit es auch im richtigen ordner sucht)
+  Writeln('Suche in: ', ExtractFilePath(ParamStr(0))); //anzeigen wo das programm sucht also welcher ornder
+  Pfad := ExtractFilePath(ParamStr(0)) + Dateiname;  // Pfad ist programmverzeichnis + Dateiname
+  //paramstr(0) gibt den Pfad des laufenden Programms zurück, also wo es liegt die exe datei
+
+  // prüfen ob datei überhaupt da ist
+  //FileExists prüft ob die Datei existiert ist schon im Compiler enthalten
+  if not FileExists(Pfad) then
+  begin
+    Writeln('Fehler: Datei "', Dateiname, '" existiert nicht.');
+    AllesOk := False;
+  end;
+
+  // datei öffnen und bearbeiten mit try/except
+  if AllesOk then
+  begin
+    try
+    //Der try ... except-Block ist ein Mechanismus für die Fehlerbehandlung in Pascal.
+    //gut fuer code der fehler werfen kann, z.b. wenn datei nicht existiert, da man mit except sagen kann was passieren soll wenn ein Fehler auftritt
+      Assign(Datei, Pfad); // Datei mit dem Pfad verbinden damit das programm weiss welche datei man öffnen soll
+      Reset(Datei); //reset öffnet die Datei zum Lesen, wenn sie existiert
+
+      try
+        // name aus erster zeile lesen
+        //Eof(Datei) prüft ob das Ende der Datei erreicht ist, beim lesen
+        if Eof(Datei) then
+        begin
+          Writeln('Fehler: Datei ist leer - Name fehlt.');
+          AllesOk := False;
+        end
+        else
+        begin
+          Readln(Datei, Name); // liest die erste Zeile als Name
+
+          // fachrichtung aus zweiter zeile lesen
+          //Eof(Datei) prüft ob das Ende der Datei erreicht ist, beim lesen
+          if Eof(Datei) then
+          begin
+            Writeln('Fehler: Fachrichtung fehlt in der Datei.');
+            AllesOk := False;
+          end
+          else
+          begin
+            Readln(Datei, Fachrichtung); // liest die zweite Zeile als Fachrichtung
+
+            // jetzt alle leistungen einlesen
+            while AllesOk and not Eof(Datei) do
+            begin
+              Readln(Datei, Zeile); // liest eine Zeile aus der Datei
+
+              // leere zeilen überspringen
+              if Zeile <> '' then
+              begin
+                // doppelpunkt suchen (trennt nummer und note)
+                // wenn kein Doppelpunkt da ist, dann Fehler
+                DoppelpunktPos := Pos(':', Zeile);
+                if DoppelpunktPos = 0 then
+                begin
+                  Writeln('Fehler: Ungültiges Format in Zeile "', Zeile, '" - Doppelpunkt fehlt.');
+                  AllesOk := False;
+                end
+                else
+                begin
+                  // nummer und note trennen
+                  //Copy(Zeile, 1, 5) → nimmt die ersten 5 Zeichen ab Position 1. Ergebnis: Nummer = 'MB001'
+                  //DoppelpunktPos - 1 → gibt die Position des Doppelpunkts minus 1 zurück, also bis zum Doppelpunkt
+                  Nummer := Copy(Zeile, 1, DoppelpunktPos - 1);
+                  NotenStr := Copy(Zeile, DoppelpunktPos + 1, Length(Zeile));
+                  // das gleiche um die note zu extrahieren nur gehen wir von der note eins weiter
+
+                  // nummer muss genau 5 zeichen haben
+                  //prüfen ob die Länge der Nummer genau 5 Zeichen beträgt und sorgt dafuer das shortstring benutzt wird
+                  if Length(Nummer) <> 5 then
+                  begin
+                    Writeln('Fehler: Ungültige Veranstaltungsnummer "', Nummer, '" - muss 5 Zeichen haben.');
+                    AllesOk := False;
+                  end
+                  else
+                  begin
+                    // note darf nicht leer sein
+                    if NotenStr = '' then
+                    begin
+                      Writeln('Fehler: Note fehlt für Veranstaltung "', Nummer, '".');
+                      AllesOk := False;
+                    end
+                    else
+                    begin
+                      // note in zahl umwandeln
+                      Note := StringZuReal(NotenStr, Erfolg);
+                      if not Erfolg then
+                      begin
+                        Writeln('Fehler: Ungültige Note "', NotenStr, '" für Veranstaltung "', Nummer, '".');
+                        AllesOk := False;
+                      end
+                      else
+                      begin
+                        // alles ok, zur liste hinzufügen
+                        Leistung.Nummer := Nummer;
+                        Leistung.Note := Note;
+                        FuegeLeistungHinzu(Leistungen, Leistung);
+                      end;
+                    end;
+                  end;
+                end;
+              end;
+            end;
+          end;
+        end;
+
+      finally
+        // datei immer schließen, egal ob fehler oder nicht
+        Close(Datei);
+      end;
+
+    except
+      // fehler beim dateizugriff
+      Writeln('Fehler beim Öffnen oder Lesen der Datei "', Dateiname, '".');
+      AllesOk := False;
+    end;
+  end;
+
+  // rückgabewert setzen
+  LeseStudentendatei := AllesOk;
+end;
+
+// liest eine .sp datei mit allen veranstaltungen der fachrichtung
+// gibt true zurück, wenn alles geklappt hat
+function LeseFachrichtungsdatei(const Fachrichtung: string; var Veranstaltungen: PVeranstaltungNode): Boolean;
+var
+  Datei: file of TVeranstaltung; //file of ist ein dateintyp in dem man binäre daten speichern kann
+  //also in dem fall fuer sp dateien sinvoll da sie binäre daten enthalten
+  Veranstaltung: TVeranstaltung;
+  Pfad: string;
+  AllesOk: Boolean;
+begin
+  LeseFachrichtungsdatei := False;
+  Veranstaltungen := nil;
+  AllesOk := True;
+
+  // pfad zur .sp datei zusammenbauen (z.b. "MB.sp")
+  Pfad := ExtractFilePath(ParamStr(0)) + Fachrichtung + '.sp';
+
+  // schauen ob datei existiert
+  if not FileExists(Pfad) then
+  begin
+    Writeln('Fehler: Fachrichtungsdatei "', Fachrichtung, '.sp" existiert nicht.');
+    AllesOk := False;
+  end;
+
+  // datei öffnen und lesen mit try/except
+  if AllesOk then
+  begin
+    try
+      Assign(Datei, Pfad);
+      Reset(Datei);
+
+      try
+        // alle veranstaltungen einlesen
+        while not Eof(Datei) do
+        begin
+          Read(Datei, Veranstaltung);
+          // zur liste hinzufügen
+          FuegeVeranstaltungHinzu(Veranstaltungen, Veranstaltung);
+        end;
+
+      finally
+        // datei immer schließen
+        Close(Datei);
+      end;
+
+    except
+      // fehler beim dateizugriff
+      Writeln('Fehler beim Öffnen oder Lesen der Fachrichtungsdatei "', Fachrichtung, '.sp".');
+      AllesOk := False;
+    end;
+  end;
+
+  LeseFachrichtungsdatei := AllesOk;
+end;
+
+// schaut wie weit der student schon ist (in prozent)
+// zählt wie viele veranstaltungen es gibt und wie viele davon bestanden sind
+function BerechneFortschritt(Leistungen: PLeistungNode; Veranstaltungen: PVeranstaltungNode; var BestandeneAnzahl: Integer): Real;
+var
+  GesamtAnzahl: Integer;
+  AktuelleLeistung: PLeistungNode;
+  AktuelleVeranstaltung: PVeranstaltungNode;
+  Gefunden: Boolean;
+begin
+  BestandeneAnzahl := 0;
+  GesamtAnzahl := 0;
+
+  // erstmal zählen wie viele veranstaltungen es insgesamt gibt
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Inc(GesamtAnzahl);
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
+  end;
+
+  // jetzt schauen welche veranstaltungen bestanden sind (note <= 4,0)
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Gefunden := False;
+    AktuelleLeistung := Leistungen;
+
+    // suchen ob student diese veranstaltung hat
+    //AktuelLeistung ein Zeiger auf einen Knoten in der verketteten Liste der Leistungen des Studenten.
+    while (AktuelleLeistung <> nil) and not Gefunden do
+    begin
+      //Das Feld Data enthält die eigentlichen Leistungsdaten (vom Typ TLeistung).
+      if (AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer) and
+         (AktuelleLeistung^.Data.Note <= 4.0) then
+         //AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer
+         //Es wird geprüft, ob die Veranstaltungsnummer der Leistung gleich der Veranstaltungsnummer der aktuellen Veranstaltung ist
+      begin
+        Inc(BestandeneAnzahl);  // eine mehr bestanden
+        Gefunden := True;
+      end;
+      AktuelleLeistung := AktuelleLeistung^.Next; // greife zum nächsten Knoten
+    end;
+
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;//greide zum nächsten Knoten
+  end;
+
+  // prozent berechnen
+  if GesamtAnzahl > 0 then
+    BerechneFortschritt := (BestandeneAnzahl / GesamtAnzahl) * 100 //mal hundert fuer prozentualen fortschritt
+  else
+    BerechneFortschritt := 0;
+end;
+
+// berechnet die durchschnittsnote gewichtet nach ects
+// das heißt, veranstaltungen mit mehr ects zählen mehr
+function BerechneGesamtnote(Leistungen: PLeistungNode; Veranstaltungen: PVeranstaltungNode): Real;
+var
+  GesamtPunkte: Real;
+  GesamtECTS: Integer;
+  AktuelleLeistung: PLeistungNode;
+  AktuelleVeranstaltung: PVeranstaltungNode;
+  Gefunden: Boolean;
+begin
+  GesamtPunkte := 0;
+  GesamtECTS := 0;
+
+  // für jede veranstaltung schauen ob student sie hat
+  AktuelleVeranstaltung := Veranstaltungen;
+  while AktuelleVeranstaltung <> nil do
+  begin
+    Gefunden := False;
+    AktuelleLeistung := Leistungen;
+
+    // in leistungen suchen
+    while (AktuelleLeistung <> nil) and not Gefunden do
+    begin
+      if AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer then
+      begin
+        // note mit ects gewichten
+        GesamtPunkte := GesamtPunkte + (AktuelleLeistung^.Data.Note * AktuelleVeranstaltung^.Data.ECTS);
+        //Note werden mal ects genommen um die gewichtung von veranstaltungen zu berücksichtigen
+        //Ects werden addiert um die gesamt ects zu bekommen
+        GesamtECTS := GesamtECTS + AktuelleVeranstaltung^.Data.ECTS;
+        Gefunden := True;
+      end;
+      AktuelleLeistung := AktuelleLeistung^.Next;
+    end;
+
+    AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
+  end;
+
+  // durchschnitt berechnen
+  if GesamtECTS > 0 then
+    BerechneGesamtnote := GesamtPunkte / GesamtECTS
+  else
+    BerechneGesamtnote := 0;
+end;
+
+// schreibt eine zeugnisdatei falls student alles bestanden hat
+// gibt true zurück, wenn das schreiben geklappt hat
+function SchreibeZeugnisdatei(const Name: string; Leistungen: PLeistungNode; Veranstaltungen: PVeranstaltungNode): Boolean;
+var
+  Datei: Text;
+  Pfad: string;
+  AktuelleVeranstaltung: PVeranstaltungNode;
+  AktuelleLeistung: PLeistungNode;
+  Gefunden: Boolean;
+  Gesamtnote: Real;
+  AllesOk: Boolean;
+begin
+  SchreibeZeugnisdatei := False;
+  AllesOk := True;
+
+  // prüfen ob name leer ist - dann kein zeugnis erstellen
+  //Name extrahiert aus der ersten Zeile der txt datei
+  if IstLeerOderWhitespace(Name) then
+  begin
+    Writeln('Fehler: Kein gültiger Name vorhanden - Zeugnis kann nicht erstellt werden.');
+    AllesOk := False;
+  end;
+
+  // pfad für zeugnisdatei nur wenn name ok ist
+  if AllesOk then
+  begin
+    Pfad := ExtractFilePath(ParamStr(0)) + 'Zeugnis_' + Name + '.txt';
+
+    // datei zum schreiben öffnen mit try/except
+    try
+      Assign(Datei, Pfad);
+      Rewrite(Datei); //öffnet eine textdatei zum schreiben
+
+      try
+        // name und leerzeile schreiben
+        Writeln(Datei, Name);
+        Writeln(Datei, '');
+
+        // alle veranstaltungen mit noten rausschreiben
+        //setze Zeiger auf anfang
+        AktuelleVeranstaltung := Veranstaltungen;
+        while AktuelleVeranstaltung <> nil do
+        begin
+          Gefunden := False;
+          AktuelleLeistung := Leistungen;
+
+          // passende leistung suchen
+          while (AktuelleLeistung <> nil) and not Gefunden do
+          begin
+          //Prüft, ob die Veranstaltungsnummer der aktuellen Leistung gleich der aktuellen Veranstaltung ist.
+            if AktuelleLeistung^.Data.Nummer = AktuelleVeranstaltung^.Data.Nummer then
+            begin
+            //Schreibt die Veranstaltungsnummer und die Note (mit 2 Nachkommastellen) in die Zeugnisdatei.
+              Writeln(Datei, AktuelleLeistung^.Data.Nummer, ':', RealZuStringMitZweiStellen(AktuelleLeistung^.Data.Note));
+              Gefunden := True;
+            end;
+            AktuelleLeistung := AktuelleLeistung^.Next;
+          end;
+
+          AktuelleVeranstaltung := AktuelleVeranstaltung^.Next;
+        end;
+
+        // gesamtnote berechnen und schreiben
+        Gesamtnote := BerechneGesamtnote(Leistungen, Veranstaltungen);
+        Writeln(Datei, '');
+        Writeln(Datei, 'Gesamtnote: ', RealZuStringMitZweiStellen(Gesamtnote));
+
+      finally
+        // datei immer schließen
+        Close(Datei);
+      end;
+
+    except
+      // fehler beim dateizugriff
+      Writeln('Fehler beim Erstellen oder Schreiben der Zeugnisdatei.');
+      AllesOk := False;
+    end;
+  end;
+
+  SchreibeZeugnisdatei := AllesOk;
+end;
+
+// hier startet das hauptprogramm
+var
+  Dateiname: string;
+  Name, Fachrichtung: string;
+  Leistungen: PLeistungNode;
+  Veranstaltungen: PVeranstaltungNode;
+  Fortschritt: Real;
+  BestandeneAnzahl: Integer;
+  StudentenDateiOk: Boolean;
+  FachrichtungsDateiOk: Boolean;
+
+begin
+  // alles auf startwerte setzen
+  SpeicherZaehler := 0;
+  Leistungen := nil;
+  Veranstaltungen := nil;
+
+
+  // user fragen welche datei er will
+  Write('Bitte geben Sie den Dateinamen ein (inkl. Endung): ');
+  Readln(Dateiname);
+
+  // studentendatei einlesen
+   //Liest die Studentendatei ein und füllt die Variablen Name, Fachrichtung und die Liste Leistungen.
+    //Gibt zurück, ob das Einlesen erfolgreich war.
+  StudentenDateiOk := LeseStudentendatei(Dateiname, Name, Fachrichtung, Leistungen);
+
+  // nur weitermachen wenn das geklappt hat
+  if StudentenDateiOk then
+  begin
+    // fachrichtungsdatei einlesen
+   
+    FachrichtungsDateiOk := LeseFachrichtungsdatei(Fachrichtung, Veranstaltungen);
+
+    // nur weitermachen wenn auch das geklappt hat
+    if FachrichtungsDateiOk then
+    begin
+      // fortschritt berechnen
+      Fortschritt := BerechneFortschritt(Leistungen, Veranstaltungen, BestandeneAnzahl);
+
+      // ergebnis ausgeben - GERUNDET auf ganze zahl
+      Writeln(Round(Fortschritt), '% bei ', BestandeneAnzahl, ' bestandenen Leistungen');
+
+      // zeugnis erstellen wenn alles bestanden UND name vorhanden
+      if Round(Fortschritt) = 100 then
+      begin
+        if SchreibeZeugnisdatei(Name, Leistungen, Veranstaltungen) then
+          Writeln('Zeugnis wurde erfolgreich erstellt: Zeugnis_', Name, '.txt')
+        else
+          Writeln('Fehler beim Erstellen des Zeugnisses.');
+      end;
+    end
+    else
+    begin
+      // fachrichtungsdatei konnte nicht gelesen werden
+      Writeln('Druecken Sie eine beliebige Taste zum Beenden...');
+      Readln;
+    end;
+  end
+  else
+  begin
+    // studentendatei konnte nicht gelesen werden
+    Writeln('Druecken Sie eine beliebige Taste zum Beenden...');
+    Readln;
+  end;
+
+  // aufräumen - speicher freigeben
+  GibLeistungslisteWiederFrei(Leistungen);
+  GibVeranstaltungslisteWiederFrei(Veranstaltungen);
+
+  // prüfen ob wir speicher vergessen haben
+  if SpeicherZaehler <> 0 then
+    Writeln('WARNUNG: Speicherleck entdeckt! Zählerstand: ', SpeicherZaehler);
+
+  Writeln('Programm beendet.');
+  readln;
+end.
